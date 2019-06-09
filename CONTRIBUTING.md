@@ -54,7 +54,7 @@ Our team and community will review your contribution and start a transparent tes
 
 ## Community
 
-Discussions about Komodo's development take place on our [discord server](https://discord.gg/yhfzqsg). Anybody is welcome to join these conversations. There is also a [newsletter](http://komodoplatform.com) with regular updates.
+Discussions about Komodo's development take place on our [discord server](https://discord.gg/yhfzqsg). Anybody is welcome to join these conversations. There is also a [newsletter](http://komodoplatform.com/newsletter) with regular updates.
 
 Wherever possible, do not take these conversations to private channels, including contacting the maintainers directly. Keeping communication public means everybody can benefit and learn from the conversation.
 
