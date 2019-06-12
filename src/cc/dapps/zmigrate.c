@@ -1086,11 +1086,11 @@ void scan_claims(int32_t issueflag,char *refcoin,int32_t batchid)
     else if ( batchid == 2 )
     {
         batchmin = 1;//777 * SATOSHIDEN;
-        batchmax = 17777 * SATOSHIDEN;
+        batchmax = 77777 * SATOSHIDEN;
     }
     else if ( batchid == 3 )
     {
-        batchmin = 17777 * SATOSHIDEN;
+        batchmin = 77777 * SATOSHIDEN;
         batchmax = 1000000 * SATOSHIDEN;
     }
     for (i=0; i<NUM_CLAIMS; i++)
@@ -1117,9 +1117,8 @@ void scan_claims(int32_t issueflag,char *refcoin,int32_t batchid)
             }
             continue;
         }
-        if ( item->total > item->refundvalue*1.05 + 10*SATOSHIDEN )
+        if ( item->total > item->refundvalue*1.1 + 10*SATOSHIDEN )
         {
-            //if ( (item->total-item->refundvalue) > 777*SATOSHIDEN )
             printf("possible.%d stolen %s %.8f vs refund %.8f -> %.8f\n",batchid,item->oldaddr,dstr(item->total),dstr(item->refundvalue),dstr(item->total)-dstr(item->refundvalue));
             numstolen++;
             possiblestolen += (item->total - item->refundvalue);
@@ -1246,7 +1245,7 @@ int64_t sum_of_vins(char *refcoin,int32_t *totalvinsp,int32_t *uniqaddrsp,bits25
                     {
                         if ( update_addrstats(srcaddr,amount) < 0 )
                             (*uniqaddrsp)++;
-                        printf("add %s <- %.8f\n",srcaddr,dstr(amount));
+                        //printf("add %s <- %.8f\n",srcaddr,dstr(amount));
                         total += amount;
                         (*totalvinsp)++;
                     }
@@ -1289,7 +1288,7 @@ void reconcile_claims(char *fname)
                 else fields[n][i++] = *str++;
             }
             //printf("%s\n",fields[0]);
-            total += update_claimstats(fields[0],fields[2],fields[4],atof(fields[3])*SATOSHIDEN + 0.0000000049);
+            total += update_claimstats(fields[1],fields[3],fields[6],atof(fields[4])*SATOSHIDEN + 0.0000000049);
             numlines++;
         }
         fclose(fp);
@@ -1311,6 +1310,12 @@ int32_t main(int32_t argc,char **argv)
         coinstr = clonestr("KMD");
         acstr = "";
     }
+    else if ( strcmp(argv[1],"CHIPS") == 0 )
+    {
+        REFCOIN_CLI = "./chips-cli";
+        coinstr = clonestr("CHIPS");
+        acstr = "";
+    }
     else
     {
         sprintf(buf,"./komodo-cli -ac_name=%s",argv[1]);
@@ -1318,7 +1323,7 @@ int32_t main(int32_t argc,char **argv)
         coinstr = clonestr(argv[1]);
         acstr = coinstr;
     }
-    if ( strcmp(coinstr,"KMD") == 0 )
+    if ( 1 )//strcmp(coinstr,"KMD") == 0 )
     {
         sprintf(buf,"%s-Claims.csv",coinstr);
         reconcile_claims(buf);
