@@ -4036,22 +4036,27 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
 {
     {
+        LogPrintf("wallet.cpp:4039 - CommitTransaction()\n");
         LOCK2(cs_main, cs_wallet);
         LogPrintf("CommitTransaction:\n%s", wtxNew.ToString());
         {
             // This is only to keep the database open to defeat the auto-flush for the
             // duration of this scope.  This is the only place where this optimization
             // maybe makes sense; please don't do it anywhere else.
+            LogPrintf("wallet.cpp:4046 - if pwalletdb backed keep db open\n");
             CWalletDB* pwalletdb = fFileBacked ? new CWalletDB(strWalletFile,"r+") : NULL;
 
             // Take key pair from key pool so it won't be used again
+            LogPrintf("wallet.cpp:4050 - KeepKey()\n");
             reservekey.KeepKey();
 
             // Add tx to wallet, because if it has change it's also ours,
             // otherwise just for transaction history.
+            LogPrintf("wallet.cpp:4055 - AddToWallet() %s\n",wtxNew.ToString());
             AddToWallet(wtxNew, false, pwalletdb);
 
             // Notify that old coins are spent
+            LogPrintf("wallet.cpp:4059 - BindWallet() & NotifyTransactionChanged()\n");
             set<CWalletTx*> setCoins;
             BOOST_FOREACH(const CTxIn& txin, wtxNew.vin)
             {
@@ -4060,26 +4065,35 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
                 NotifyTransactionChanged(this, coin.GetHash(), CT_UPDATED);
             }
 
-            if (fFileBacked)
+            LogPrintf("wallet.cpp:4068 - check if pwalletdb is fFileBacked\n");
+            if (fFileBacked){
+                LogPrintf("wallet.cpp:4070 - delete pwalletdb & flushOnClose()\n");
                 delete pwalletdb;
+            }
+
         }
 
         // Track how many getdata requests our transaction gets
+        LogPrintf("wallet.cpp:4077 - mapRequestCount for wtxNew\n");
         mapRequestCount[wtxNew.GetHash()] = 0;
 
+        LogPrintf("wallet.cpp:4080 - check if fBroadcastTransactions true\n");
         if (fBroadcastTransactions)
         {
             // Broadcast
+            LogPrintf("wallet.cpp:4084 - broadcast\n");
             if (!wtxNew.AcceptToMemoryPool(false))
-            {
+            { 
                 fprintf(stderr,"commit failed\n");
                 // This must not fail. The transaction has already been signed and recorded.
                 LogPrintf("CommitTransaction(): Error: Transaction not valid\n");
                 return false;
             }
+            LogPrintf("wallet.cpp:4092 - RelayWalletTransaction()\n");
             wtxNew.RelayWalletTransaction();
         }
     }
+    LogPrintf("wallet.cpp:4096 - CommitTransaction() true!\n");
     return true;
 }
 
