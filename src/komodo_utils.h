@@ -1478,6 +1478,7 @@ uint16_t komodo_userpass(char *userpass,char *symbol)
 #endif
     }
     else sprintf(confname,"%s.conf",symbol);
+    printf("komodo_utils:1481\n");
     komodo_statefname(fname,symbol,confname);
     if ( (fp= fopen(fname,"rb")) != 0 )
     {

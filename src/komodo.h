@@ -371,6 +371,7 @@ void komodo_stateupdate(int32_t height,uint8_t notarypubs[][33],uint8_t numnotar
     //printf("[%s] (%s) -> (%s)\n",ASSETCHAINS_SYMBOL,symbol,dest);
     if ( fp == 0 )
     {
+        printf("komodo.h:374\n");
         komodo_statefname(fname,ASSETCHAINS_SYMBOL,(char *)"komodostate");
         if ( (fp= fopen(fname,"rb+")) != 0 )
         {
@@ -721,6 +722,7 @@ int32_t komodo_voutupdate(bool fJustCheck,int32_t *isratificationp,int32_t notar
                         if ( signedfp == 0 )
                         {
                             char fname[512];
+                            printf("komodo.h:725\n");
                             komodo_statefname(fname,ASSETCHAINS_SYMBOL,(char *)"signedmasks");
                             if ( (signedfp= fopen(fname,"rb+")) == 0 )
                                 signedfp = fopen(fname,"wb");
@@ -909,6 +911,7 @@ int32_t komodo_connectblock(bool fJustCheck, CBlockIndex *pindex,CBlock& block)
                     if ( signedfp == 0 )
                     {
                         char fname[512];
+                        printf("komodo_gateway:914\n");
                         komodo_statefname(fname,ASSETCHAINS_SYMBOL,(char *)"signedmasks");
                         if ( (signedfp= fopen(fname,"rb+")) == 0 )
                             signedfp = fopen(fname,"wb");

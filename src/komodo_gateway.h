@@ -1469,6 +1469,7 @@ void komodo_passport_iteration()
             if ( baseid == 32 ) // only care about KMD's state
             {
                 refsp->RTmask &= ~(1LL << baseid);
+                printf("komodo_gateway:1472\n");
                 komodo_statefname(fname,baseid<32?base:(char *)"",(char *)"komodostate");
                 komodo_nameset(symbol,dest,base);
                 sp = komodo_stateptrget(symbol);
@@ -1513,6 +1514,7 @@ void komodo_passport_iteration()
                     } //else fprintf(stderr,"%s.%ld ",CURRENCIES[baseid],ftell(fp));
                     fclose(fp);
                 } else fprintf(stderr,"load error.(%s) %p\n",fname,sp);
+                printf("komodo_gateway:1517\n");
                 komodo_statefname(fname,baseid<32?base:(char *)"",(char *)"realtime");
                 if ( (fp= fopen(fname,"rb")) != 0 )
                 {
@@ -1535,6 +1537,7 @@ void komodo_passport_iteration()
         else
         {
             refsp->RTmask &= ~(1LL << baseid);
+            printf("komodo_gateway:1540\n");
             komodo_statefname(fname,baseid<32?base:(char *)"",(char *)"realtime");
             if ( (fp= fopen(fname,"wb")) != 0 )
             {
