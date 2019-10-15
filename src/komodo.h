@@ -372,6 +372,7 @@ void komodo_stateupdate(int32_t height,uint8_t notarypubs[][33],uint8_t numnotar
     if ( fp == 0 )
     {
         printf("komodo.h:374\n");
+        printf("call komodo_statefname(fname: %s - assetchains_symbol: %s - komodostate)\n", fname, ASSETCHAINS_SYMBOL);
         komodo_statefname(fname,ASSETCHAINS_SYMBOL,(char *)"komodostate");
         if ( (fp= fopen(fname,"rb+")) != 0 )
         {
