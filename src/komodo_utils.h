@@ -1363,9 +1363,10 @@ void komodo_statefname(char *fname,char *symbol,char *str)
     printf("fname after GetDataDir: %s - symbol: %s\n", fname, symbol);
     if ( (n= (int32_t)strlen(ASSETCHAINS_SYMBOL)) != 0 )
     {   
+        if (mapArgs.count("-datadir")) printf("datadir is set\n");
         printf("first condition check : %i\n",(n= (int32_t)strlen(ASSETCHAINS_SYMBOL)));
         len = (int32_t)strlen(fname);
-        print("len: %i\n", len);
+        printf("len: %i\n", len);
         if ( strcmp(ASSETCHAINS_SYMBOL,&fname[len - n]) == 0 )
             fname[len - n] = 0;
         else
