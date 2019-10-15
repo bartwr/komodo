@@ -1360,11 +1360,12 @@ void komodo_statefname(char *fname,char *symbol,char *str)
 {
     int32_t n,len;
     sprintf(fname,"%s",GetDataDir(false).string().c_str());
-    printf("fname after GetDataDir: %s\n", fname);
-
+    printf("fname after GetDataDir: %s - symbol: %s\n", fname, symbol);
     if ( (n= (int32_t)strlen(ASSETCHAINS_SYMBOL)) != 0 )
-    {
+    {   
+        printf("first condition check : %i\n",(n= (int32_t)strlen(ASSETCHAINS_SYMBOL)));
         len = (int32_t)strlen(fname);
+        print("len: %i\n", len);
         if ( strcmp(ASSETCHAINS_SYMBOL,&fname[len - n]) == 0 )
             fname[len - n] = 0;
         else

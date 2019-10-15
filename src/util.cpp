@@ -658,19 +658,19 @@ const boost::filesystem::path &GetDataDir(bool fNetSpecific)
 
     // This can be called during exceptions by LogPrintf(), so we cache the
     // value so we don't have to do memory allocations after that.
-    printf("util:661");
+    printf("util:661\n");
     if (!path.empty())
         return path;
-    printf("util:664");
+    printf("util:664\n");
     if (mapArgs.count("-datadir")) {
-        printf("util:666");
+        printf("util:666\n");
         path = fs::system_complete(mapArgs["-datadir"]);
         if (!fs::is_directory(path)) {
             path = "";
             return path;
         }
     } else {
-        printf("util:673");
+        printf("util:673\n");
         path = GetDefaultDataDir();
     }
     if (fNetSpecific)
