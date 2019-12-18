@@ -344,6 +344,7 @@ extern UniValue pegscreate(const UniValue& params, bool fHelp, const CPubKey& my
 extern UniValue pegsfund(const UniValue& params, bool fHelp, const CPubKey& mypk);
 extern UniValue pegsget(const UniValue& params, bool fHelp, const CPubKey& mypk);
 extern UniValue pegsredeem(const UniValue& params, bool fHelp, const CPubKey& mypk);
+extern UniValue pegsclose(const UniValue& params, bool fHelp, const CPubKey& mypk);
 extern UniValue pegsliquidate(const UniValue& params, bool fHelp, const CPubKey& mypk);
 extern UniValue pegsexchange(const UniValue& params, bool fHelp, const CPubKey& mypk);
 extern UniValue pegsaccounthistory(const UniValue& params, bool fHelp, const CPubKey& mypk);

@@ -580,6 +580,7 @@ static const CRPCCommand vRPCCommands[] =
     { "pegs",       "pegsfund",         &pegsfund,      true },
     { "pegs",       "pegsget",         &pegsget,        true },
     { "pegs",       "pegsredeem",         &pegsredeem,        true },
+    { "pegs",       "pegsclose",         &pegsclose,        true },
     { "pegs",       "pegsliquidate",         &pegsliquidate,        true },
     { "pegs",       "pegsexchange",         &pegsexchange,        true },
     { "pegs",       "pegsaccounthistory", &pegsaccounthistory,      true },
