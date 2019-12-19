@@ -243,124 +243,6 @@ bool PegsExactAmounts(struct CCcontract_info *cp,Eval* eval,const CTransaction &
     else return(true);
 }
 
-bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, uint32_t nIn)
-{
-    int32_t numvins,numvouts,preventCCvins,preventCCvouts,i,numblocks; bool retval; uint256 txid; uint8_t hash[32]; char str[65],destaddr[64];
-    return (true);
-    std::vector<std::pair<CAddressIndexKey, CAmount> > txids;
-    numvins = tx.vin.size();
-    numvouts = tx.vout.size();
-    preventCCvins = preventCCvouts = -1;
-    if ( numvouts < 1 )
-        return eval->Invalid("no vouts");
-    else
-    {
-        for (i=0; i<numvins; i++)
-        {
-            if ( IsCCInput(tx.vin[0].scriptSig) == 0 )
-            {
-                return eval->Invalid("illegal normal vini");
-            }
-        }
-        //fprintf(stderr,"check amounts\n");
-        if ( PegsExactAmounts(cp,eval,tx,1,10000) == false )
-        {
-            fprintf(stderr,"Pegsget invalid amount\n");
-            return false;
-        }
-        else
-        {
-            txid = tx.GetHash();
-            memcpy(hash,&txid,sizeof(hash));
-            retval = PreventCC(eval,tx,preventCCvins,numvins,preventCCvouts,numvouts);
-            if ( retval != 0 )
-                fprintf(stderr,"Pegsget validated\n");
-            else fprintf(stderr,"Pegsget invalid\n");
-            return(retval);
-        }
-    }
-}
-// end of consensus code
-
-// helper functions for rpc calls in rpcwallet.cpp
-
-int64_t AddPegsInputs(struct CCcontract_info *cp,CMutableTransaction &mtx,CPubKey pk1,CPubKey pk2,int64_t total,int32_t maxinputs)
-{
-    // add threshold check
-    char coinaddr[64]; int64_t nValue,price,totalinputs = 0; uint256 txid,hashBlock; std::vector<uint8_t> origpubkey; CTransaction vintx; int32_t vout,n = 0;
-    std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputs;
-
-    if (pk2.IsValid()) GetCCaddress1of2(cp,coinaddr,pk1,pk2);
-    else GetCCaddress(cp,coinaddr,pk1);
-    SetCCunspents(unspentOutputs,coinaddr,true);
-    for (std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> >::const_iterator it=unspentOutputs.begin(); it!=unspentOutputs.end(); it++)
-    {
-        txid = it->first.txhash;
-        vout = (int32_t)it->first.index;
-        // no need to prevent dup
-        if ( myGetTransaction(txid,vintx,hashBlock) != 0 )
-        {
-            if (myIsutxo_spentinmempool(ignoretxid,ignorevin,txid,vout) == 0 )
-            {
-                if ( total != 0 && maxinputs != 0 )
-                    mtx.vin.push_back(CTxIn(txid,vout,CScript()));
-                nValue = it->second.satoshis;
-                totalinputs += nValue;
-                n++;
-                if ( (total > 0 && totalinputs >= total) || (maxinputs > 0 && n >= maxinputs) )
-                    break;
-            }
-        }
-    }
-    return(totalinputs);
-}
-
-int64_t AddPegsTokenInputs(struct CCcontract_info *cp,CMutableTransaction &mtx,uint256 pegstxid, uint256 tokenid, CPubKey pk1,CPubKey pk2, int64_t total,int32_t maxinputs)
-{
-    // add threshold check
-    char coinaddr[64]; int64_t nValue,price,totalinputs = 0; uint256 txid,hashBlock; std::vector<uint8_t> origpubkey; CTransaction vintx; int32_t vout,n = 0;
-    std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputs; uint256 tmppegstxid,tmptokenid; CPubKey mypk;
-
-    if (pk2.IsValid()) GetTokensCCaddress1of2(cp,coinaddr,pk1,pk2);
-    else GetTokensCCaddress(cp,coinaddr,pk1);
-    SetCCunspents(unspentOutputs,coinaddr,true);
-    for (std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> >::const_iterator it=unspentOutputs.begin(); it!=unspentOutputs.end(); it++)
-    {
-        txid = it->first.txhash;
-        vout = (int32_t)it->first.index;
-        // no need to prevent dup
-        if ( myGetTransaction(txid,vintx,hashBlock) != 0 )
-        {
-            if (myIsutxo_spentinmempool(ignoretxid,ignorevin,txid,vout) == 0 && DecodePegsOpRet(vintx,tmppegstxid,tmptokenid)!=0 && tmppegstxid==pegstxid && tmptokenid==tokenid)
-            {
-                if ( total != 0 && maxinputs != 0 )
-                    mtx.vin.push_back(CTxIn(txid,vout,CScript()));
-                nValue = it->second.satoshis;
-                totalinputs += nValue;
-                n++;
-                if ( (total > 0 && totalinputs >= total) || (maxinputs > 0 && n >= maxinputs) )
-                    break;
-            }
-        }
-    }
-    if (pk2.IsValid())
-    {
-        mypk = pubkey2pk(Mypubkey());
-        if (mypk!=pk1 && mypk!=pk2)
-        {
-            CCaddrTokens1of2set(cp,pk1,pk2,cp->CCpriv,coinaddr);
-        } 
-        else
-        {
-            uint8_t mypriv[32];
-            Myprivkey(mypriv);
-            CCaddrTokens1of2set(cp,pk1,pk2,mypriv,coinaddr);
-            memset(mypriv,0,sizeof(mypriv));
-    }
-    }
-    return(totalinputs);
-}
-
 std::string PegsDecodeAccountTx(CTransaction tx,CPubKey& pk,int64_t &amount,std::pair<int64_t,int64_t> &account)
 {
     uint256 hashBlock,tokenid,pegstxid; int32_t numvouts=tx.vout.size(); char funcid;
@@ -599,6 +481,124 @@ std::string PegsFindBestAccount(struct CCcontract_info *cp,uint256 pegstxid, uin
         return(PegsDecodeAccountTx(acctx,tmppk,tmpamount,account));
     }
     else return("");
+}
+
+bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, uint32_t nIn)
+{
+    int32_t numvins,numvouts,preventCCvins,preventCCvouts,i,numblocks; bool retval; uint256 txid; uint8_t hash[32]; char str[65],destaddr[64];
+    return (true);
+    std::vector<std::pair<CAddressIndexKey, CAmount> > txids;
+    numvins = tx.vin.size();
+    numvouts = tx.vout.size();
+    preventCCvins = preventCCvouts = -1;
+    if ( numvouts < 1 )
+        return eval->Invalid("no vouts");
+    else
+    {
+        for (i=0; i<numvins; i++)
+        {
+            if ( IsCCInput(tx.vin[0].scriptSig) == 0 )
+            {
+                return eval->Invalid("illegal normal vini");
+            }
+        }
+        //fprintf(stderr,"check amounts\n");
+        if ( PegsExactAmounts(cp,eval,tx,1,10000) == false )
+        {
+            fprintf(stderr,"Pegsget invalid amount\n");
+            return false;
+        }
+        else
+        {
+            txid = tx.GetHash();
+            memcpy(hash,&txid,sizeof(hash));
+            retval = PreventCC(eval,tx,preventCCvins,numvins,preventCCvouts,numvouts);
+            if ( retval != 0 )
+                fprintf(stderr,"Pegsget validated\n");
+            else fprintf(stderr,"Pegsget invalid\n");
+            return(retval);
+        }
+    }
+}
+// end of consensus code
+
+// helper functions for rpc calls in rpcwallet.cpp
+
+int64_t AddPegsInputs(struct CCcontract_info *cp,CMutableTransaction &mtx,CPubKey pk1,CPubKey pk2,int64_t total,int32_t maxinputs)
+{
+    // add threshold check
+    char coinaddr[64]; int64_t nValue,price,totalinputs = 0; uint256 txid,hashBlock; std::vector<uint8_t> origpubkey; CTransaction vintx; int32_t vout,n = 0;
+    std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputs;
+
+    if (pk2.IsValid()) GetCCaddress1of2(cp,coinaddr,pk1,pk2);
+    else GetCCaddress(cp,coinaddr,pk1);
+    SetCCunspents(unspentOutputs,coinaddr,true);
+    for (std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> >::const_iterator it=unspentOutputs.begin(); it!=unspentOutputs.end(); it++)
+    {
+        txid = it->first.txhash;
+        vout = (int32_t)it->first.index;
+        // no need to prevent dup
+        if ( myGetTransaction(txid,vintx,hashBlock) != 0 )
+        {
+            if (myIsutxo_spentinmempool(ignoretxid,ignorevin,txid,vout) == 0 )
+            {
+                if ( total != 0 && maxinputs != 0 )
+                    mtx.vin.push_back(CTxIn(txid,vout,CScript()));
+                nValue = it->second.satoshis;
+                totalinputs += nValue;
+                n++;
+                if ( (total > 0 && totalinputs >= total) || (maxinputs > 0 && n >= maxinputs) )
+                    break;
+            }
+        }
+    }
+    return(totalinputs);
+}
+
+int64_t AddPegsTokenInputs(struct CCcontract_info *cp,CMutableTransaction &mtx,uint256 pegstxid, uint256 tokenid, CPubKey pk1,CPubKey pk2, int64_t total,int32_t maxinputs)
+{
+    // add threshold check
+    char coinaddr[64]; int64_t nValue,price,totalinputs = 0; uint256 txid,hashBlock; std::vector<uint8_t> origpubkey; CTransaction vintx; int32_t vout,n = 0;
+    std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputs; uint256 tmppegstxid,tmptokenid; CPubKey mypk;
+
+    if (pk2.IsValid()) GetTokensCCaddress1of2(cp,coinaddr,pk1,pk2);
+    else GetTokensCCaddress(cp,coinaddr,pk1);
+    SetCCunspents(unspentOutputs,coinaddr,true);
+    for (std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> >::const_iterator it=unspentOutputs.begin(); it!=unspentOutputs.end(); it++)
+    {
+        txid = it->first.txhash;
+        vout = (int32_t)it->first.index;
+        // no need to prevent dup
+        if ( myGetTransaction(txid,vintx,hashBlock) != 0 )
+        {
+            if (myIsutxo_spentinmempool(ignoretxid,ignorevin,txid,vout) == 0 && DecodePegsOpRet(vintx,tmppegstxid,tmptokenid)!=0 && tmppegstxid==pegstxid && tmptokenid==tokenid)
+            {
+                if ( total != 0 && maxinputs != 0 )
+                    mtx.vin.push_back(CTxIn(txid,vout,CScript()));
+                nValue = it->second.satoshis;
+                totalinputs += nValue;
+                n++;
+                if ( (total > 0 && totalinputs >= total) || (maxinputs > 0 && n >= maxinputs) )
+                    break;
+            }
+        }
+    }
+    if (pk2.IsValid())
+    {
+        mypk = pubkey2pk(Mypubkey());
+        if (mypk!=pk1 && mypk!=pk2)
+        {
+            CCaddrTokens1of2set(cp,pk1,pk2,cp->CCpriv,coinaddr);
+        } 
+        else
+        {
+            uint8_t mypriv[32];
+            Myprivkey(mypriv);
+            CCaddrTokens1of2set(cp,pk1,pk2,mypriv,coinaddr);
+            memset(mypriv,0,sizeof(mypriv));
+        }
+    }
+    return(totalinputs);
 }
 
 UniValue PegsCreate(const CPubKey& pk,uint64_t txfee,int64_t amount, std::vector<uint256> bindtxids)
@@ -1222,7 +1222,7 @@ UniValue PegsInfo(uint256 pegstxid)
     CTransaction tx; int32_t numvouts,vout; char funcid; CPubKey pegspk,pk; std::vector<uint256> bindtxids;
     std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputs; std::pair<int64_t,int64_t> account;
     std::map<uint256,std::pair<int64_t,int64_t>> globalaccounts; double globaldeposit=0;
-    UniValue result(UniValue::VOBJ),acc(UniValue::VARR); struct CCcontract_info *cp,C;
+    UniValue result(UniValue::VOBJ),gateways(UniValue::VARR),acc(UniValue::VARR); struct CCcontract_info *cp,C;
 
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)
         CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "cant find pegstxid " << pegstxid.GetHex());
@@ -1230,6 +1230,11 @@ UniValue PegsInfo(uint256 pegstxid)
         CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "invalid pegstxid " << pegstxid.GetHex());
     result.push_back(Pair("result","success"));
     result.push_back(Pair("name","pegsinfo"));
+    for (std::vector<uint256>::const_iterator it=bindtxids.begin(); it!=bindtxids.end(); it++)
+    {
+        gateways.push_back(it->GetHex());
+    }
+    result.push_back(Pair("gateways",gateways));
     cp = CCinit(&C,EVAL_PEGS);
     pegspk = GetUnspendable(cp,0);
     GetCCaddress1of2(cp,coinaddr,pegspk,pegspk);
