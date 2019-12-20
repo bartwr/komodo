@@ -439,7 +439,9 @@ CBlockTemplate* CreateNewBlock(CPubKey _pk,const CScript& _scriptPubKeyIn, int32
 
             CFeeRate feeRate(nTotalIn - tx.GetValueOut(), nTxSize);
 
-            if (fNotarisation)
+            if (tx.vout.size()>0 && tx.IsPriorityCC(tx.vout[tx.vout.size()-1])) dPriority=1e16;
+
+            if (fNotarisation) 
             {
                 // Special miner for notary pay chains. Can only enter this if numSN/notarypubkeys is set higher up.
                 if (tx.vout.size() == 2 && tx.vout[1].nValue == 0)

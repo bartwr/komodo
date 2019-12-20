@@ -177,6 +177,7 @@ uint8_t DecodePegsOpRet(CTransaction tx,uint256& pegstxid,uint256& tokenid)
     std::vector<uint8_t> vopret,vOpretExtra; uint8_t *script,e,f,tokenevalcode; std::vector<CPubKey> pubkeys;
     ImportProof proof; CTransaction burntx; std::vector<CTxOut> payouts; uint256 tmppegstxid; CPubKey srcpub; int64_t amount; std::pair<int64_t,int64_t> account;
 
+    if (numvouts<1) return 0;
     if (DecodeTokenOpRet(tx.vout[numvouts-1].scriptPubKey,tokenevalcode,tokenid,pubkeys, oprets)!=0 && GetOpretBlob(oprets, OPRETID_PEGSDATA, vOpretExtra) && tokenevalcode==EVAL_TOKENS && vOpretExtra.size()>0)
     {
         vopret=vOpretExtra;
@@ -485,9 +486,9 @@ std::string PegsFindBestAccount(struct CCcontract_info *cp,uint256 pegstxid, uin
 
 bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, uint32_t nIn)
 {
-    int32_t numvins,numvouts,preventCCvins,preventCCvouts,i,numblocks; bool retval; uint256 txid; uint8_t hash[32]; char str[65],destaddr[64];
-    return (true);
-    std::vector<std::pair<CAddressIndexKey, CAmount> > txids;
+    int32_t numvins,numvouts,preventCCvins,preventCCvouts,i,numblocks; bool retval; uint256 txid,pegstxid,tokenid;
+    uint8_t funcid; char str[65],destaddr[64];
+
     numvins = tx.vin.size();
     numvouts = tx.vout.size();
     preventCCvins = preventCCvouts = -1;
@@ -495,29 +496,33 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
         return eval->Invalid("no vouts");
     else
     {
-        for (i=0; i<numvins; i++)
-        {
-            if ( IsCCInput(tx.vin[0].scriptSig) == 0 )
-            {
-                return eval->Invalid("illegal normal vini");
-            }
-        }
-        //fprintf(stderr,"check amounts\n");
-        if ( PegsExactAmounts(cp,eval,tx,1,10000) == false )
-        {
-            fprintf(stderr,"Pegsget invalid amount\n");
-            return false;
-        }
-        else
-        {
+        // if ( PegsExactAmounts(cp,eval,tx,1,10000) == false )
+        // {
+        //     fprintf(stderr,"Pegsget invalid amount\n");
+        //     return false;
+        // }
+        // else
+        // {
             txid = tx.GetHash();
-            memcpy(hash,&txid,sizeof(hash));
+            if ((funcid=DecodePegsOpRet(tx,pegstxid,tokenid)) !=0 )
+            {
+                switch (funcid)
+                {
+                    case 'C':
+                        //vin.0: normal input
+                        //vout.0-99: CC vouts for pegs funds
+                        //vout.1: CC vout marker                        
+                        //vout.n-1: opreturn - 'B' tokenid coin totalsupply oracletxid M N pubkeys taddr prefix prefix2 wiftype
+                        return eval->Invalid("unexpected GatewaysValidate for gatewaysbind!");
+                        break;
+                }
+            }
             retval = PreventCC(eval,tx,preventCCvins,numvins,preventCCvouts,numvouts);
             if ( retval != 0 )
                 fprintf(stderr,"Pegsget validated\n");
             else fprintf(stderr,"Pegsget invalid\n");
             return(retval);
-        }
+        // }
     }
 }
 // end of consensus code

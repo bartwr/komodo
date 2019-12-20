@@ -717,6 +717,13 @@ public:
         return (ASSETCHAINS_SELFIMPORT=="PEGSCC" && vin[0].prevout.n == 10e8);
     }
 
+    bool IsPriorityCC(const CTxOut &vout) const
+    {
+        uint8_t evalcode=vout.scriptPubKey[0];
+        if (evalcode==0xee || evalcode==0xf3) return (true);
+        return (false);
+    }
+
     friend bool operator==(const CTransaction& a, const CTransaction& b)
     {
         return a.hash == b.hash;
