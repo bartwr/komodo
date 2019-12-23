@@ -510,7 +510,7 @@ bool GatewaysValidate(struct CCcontract_info *cp,Eval *eval,const CTransaction &
     else
     {
         //LogPrint("gatewayscc-1","check amounts\n");
-        // if ( GatewaysExactAmounts(cp,eval,tx,1,10000) == false )
+        // if ( GatewaysExactAmounts(cp,eval,tx,1,CC_TXFEE) == false )
         // {
         //      return eval->Invalid("invalid inputs vs. outputs!");   
         // }
@@ -997,7 +997,8 @@ UniValue GatewaysClaim(const CPubKey& pk, uint64_t txfee,uint256 bindtxid,std::s
         if ( inputs > amount ) CCchange = (inputs - amount);
         mtx.vin.push_back(CTxIn(deposittxid,0,CScript()));
         mtx.vout.push_back(MakeCC1vout(EVAL_TOKENS,amount,destpub));
-        if ( CCchange != 0 ) mtx.vout.push_back(MakeTokensCC1vout(EVAL_GATEWAYS,CCchange,gatewayspk));     
+        if ( CCchange != 0 ) mtx.vout.push_back(MakeTokensCC1vout(EVAL_GATEWAYS,CCchange,gatewayspk));    
+        if (txfee==0)  mtx.vout.push_back(CTxOut(CC_MARKER_VALUE,CScript() << ParseHex(HexStr(mypk)) << OP_CHECKSIG));
         return(FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodeGatewaysClaimOpRet('C',tokenid,bindtxid,refcoin,deposittxid,destpub,amount)));
     }
     CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "cant find enough tokens in gateways address for given amount");
