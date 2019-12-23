@@ -95,7 +95,8 @@ pegs CC is able to create a coin backed (by any supported coin with gateways CC 
 #define PEGS_ACCOUNT_YELLOW_ZONE 60
 #define PEGS_ACCOUNT_RED_ZONE 90
 #endif // PEGS_THRESHOLDS
-#define CC_MARKER_VALUE 10000
+#define CC_MARKER_VALUE 1000
+#define CC_TXFEE ASSETCHAINS_CCZEROTXFEE[EVAL_PEGS]?0:10000
 
 extern uint64_t ASSETCHAINS_PEGSCCPARAMS[3];
 
@@ -614,7 +615,7 @@ UniValue PegsCreate(const CPubKey& pk,uint64_t txfee,int64_t amount, std::vector
 
     cp = CCinit(&C,EVAL_PEGS);
     if ( txfee == 0 )
-        txfee = 10000;
+        txfee = CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     for(auto txid : bindtxids)
@@ -642,7 +643,7 @@ UniValue PegsFund(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 tok
     cp = CCinit(&C,EVAL_PEGS);
     cpTokens = CCinit(&CTokens,EVAL_TOKENS);
     if ( txfee == 0 )
-        txfee = 10000;
+        txfee = CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)
@@ -709,7 +710,7 @@ UniValue PegsGet(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 toke
 
     cp = CCinit(&C,EVAL_PEGS);
     if ( txfee == 0 )
-        txfee = 10000;
+        txfee = CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)
@@ -758,7 +759,7 @@ UniValue PegsRedeem(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 t
     cp = CCinit(&C,EVAL_PEGS);
     cpTokens = CCinit(&CTokens,EVAL_TOKENS);
     if ( txfee == 0 )
-        txfee = 10000;
+        txfee = CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)
@@ -843,7 +844,7 @@ UniValue PegsClose(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 to
     cp = CCinit(&C,EVAL_PEGS);
     cpTokens = CCinit(&CTokens,EVAL_TOKENS);
     if ( txfee == 0 )
-        txfee = 10000;
+        txfee = CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)
@@ -925,7 +926,7 @@ UniValue PegsExchange(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256
     cp = CCinit(&C,EVAL_PEGS);
     cpTokens = CCinit(&CTokens,EVAL_TOKENS);
     if ( txfee == 0 )
-        txfee = 10000;
+        txfee = CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)
@@ -1013,7 +1014,7 @@ UniValue PegsLiquidate(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint25
     cp = CCinit(&C,EVAL_PEGS);
     cpTokens = CCinit(&CTokens,EVAL_TOKENS);
     if ( txfee == 0 )
-        txfee = 10000;
+        txfee = CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)

@@ -47,6 +47,7 @@
 
 extern uint32_t ASSETCHAINS_MAGIC;
 extern std::string ASSETCHAINS_SELFIMPORT;
+extern uint8_t ASSETCHAINS_CCZEROTXFEE[256];
 
 // Overwinter transaction version
 static const int32_t OVERWINTER_TX_VERSION = 3;
@@ -720,7 +721,7 @@ public:
     bool IsPriorityCC(const CTxOut &vout) const
     {
         uint8_t evalcode=vout.scriptPubKey[0];
-        if (evalcode==0xee || evalcode==0xf3) return (true);
+        if (ASSETCHAINS_CCZEROTXFEE[evalcode]) return (true);
         return (false);
     }
 
