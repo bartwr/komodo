@@ -1809,7 +1809,7 @@ void komodo_args(char *argv0)
     }
     KOMODO_EARLYTXID = Parseuint256(GetArg("-earlytxid","0").c_str());    
     ASSETCHAINS_EARLYTXIDCONTRACT = GetArg("-ac_earlytxidcontract",0);
-    Split(GetArg("-ac_cczerotxfee",""), sizeof(cczerotxfee),  cczerotxfee, 0);
+    Split(GetArg("-cczerotxfee",""), sizeof(cczerotxfee),  cczerotxfee, 0);
     memset(ASSETCHAINS_CCZEROTXFEE,0,sizeof(ASSETCHAINS_CCZEROTXFEE));
     for (i=0; i<256; i++)
     {

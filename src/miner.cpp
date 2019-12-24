@@ -427,7 +427,7 @@ CBlockTemplate* CreateNewBlock(CPubKey _pk,const CScript& _scriptPubKeyIn, int32
                 }
                 nTotalIn += tx.GetShieldedValueIn();
             }
-
+            
             if (fMissingInputs) continue;
 
             // Priority is sum(valuein * age) / modified_txsize
@@ -439,7 +439,7 @@ CBlockTemplate* CreateNewBlock(CPubKey _pk,const CScript& _scriptPubKeyIn, int32
 
             CFeeRate feeRate(nTotalIn - tx.GetValueOut(), nTxSize);
 
-            if (tx.vout.size()>0 && tx.IsPriorityCC(tx.vout[tx.vout.size()-1])) dPriority=1e16;
+            if (tx.vout.size()>0 && tx.IsPriorityCC()) dPriority=1e16;
 
             if (fNotarisation) 
             {

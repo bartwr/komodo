@@ -718,9 +718,10 @@ public:
         return (ASSETCHAINS_SELFIMPORT=="PEGSCC" && vin[0].prevout.n == 10e8);
     }
 
-    bool IsPriorityCC(const CTxOut &vout) const
+    bool IsPriorityCC() const
     {
-        uint8_t evalcode=vout.scriptPubKey[0];
+        if (vout.size()<1) return (false);
+        uint8_t evalcode=vout[vout.size()-1].scriptPubKey[2];
         if (ASSETCHAINS_CCZEROTXFEE[evalcode]) return (true);
         return (false);
     }
