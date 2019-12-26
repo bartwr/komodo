@@ -724,10 +724,13 @@ public:
         std::vector<uint8_t> vopret; uint8_t evalcode;
 
         if (vout.size()<1) return (false);
-        GetOpReturnData(vout[vout.size()-1].scriptPubKey,vopret);
-        evalcode=vopret[0];
-        if (ASSETCHAINS_CCZEROTXFEE[evalcode]) 
-            return (true);
+        if (vout[vout.size()-1].scriptPubKey.IsOpReturn())
+        {
+            GetOpReturnData(vout[vout.size()-1].scriptPubKey,vopret);
+            evalcode=vopret[0];
+            if (ASSETCHAINS_CCZEROTXFEE[evalcode]) 
+                return (true);
+        }
         return (false);
     }
 
