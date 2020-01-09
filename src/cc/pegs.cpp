@@ -496,9 +496,9 @@ std::string ValidateAccount(const CTransaction &tx, const uint256 &tokenid,const
         return ("vin.0 is CC account marker for pegs"+name);
     else if ( (*cp->ismyvin)(tx.vin[1].scriptSig) == 0 )
         return ("vin.1 is CC account marker CC for pegs"+name);
-    else if ( GetCCaddress1of2(cp,addr,pk,pegspk) && ConstrainVout(tx.vout[0],1,addr,CC_MARKER_VALUE)==0)
+    else if ( GetCCaddress1of2(cp,addr,pegspk,pegspk) && ConstrainVout(tx.vout[0],1,addr,CC_MARKER_VALUE)==0)
         return ("invalid account marker vout.0 for pegs"+name);
-    else if ( GetCCaddress1of2(cp,addr,pegspk,pegspk) && ConstrainVout(tx.vout[1],1,addr,CC_MARKER_VALUE)==0)
+    else if ( GetCCaddress1of2(cp,addr,pk,pegspk) && ConstrainVout(tx.vout[1],1,addr,CC_MARKER_VALUE)==0)
         return ("invalid account marker vout.1 for pegs"+name);
     else if (name=="fund")
     {
