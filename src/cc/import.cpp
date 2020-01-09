@@ -389,7 +389,7 @@ int32_t CheckPegsimport(CTransaction importTx,uint256 pegstxid, uint256 tokenid,
     }
     else if (PegsFindAccount(cp,tmpsrcpub,tmppegstxid,tmptokenid,prevaccounttxid,prevaccount)==0)
     { 
-        LOGSTREAM("pegscc", CCLOG_ERROR, stream << "no account found, please create account first with pegsfund!" << std::endl);
+        LOGSTREAM("pegscc", CCLOG_ERROR, stream << "cannot find account from which to issue coins, fund account first with pegsfund!" << std::endl);
         return(-1);
     }
     else if (prevaccounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,prevaccounttxid,1) != 0)
