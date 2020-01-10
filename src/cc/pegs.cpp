@@ -577,9 +577,9 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
                         {
                             if ((*cp->ismyvin)(tx.vin[0].scriptSig) == 0 )
                                 return eval->Invalid("vin.0 is CC for pegsfund!");
-                            else if ( GetCCaddress1of2(cp,addr,srcpub,pegspk) && ConstrainVout(tx.vout[0],1,addr,CC_MARKER_VALUE)==0)
+                            else if ( GetCCaddress1of2(cp,addr,pegspk,pegspk) && ConstrainVout(tx.vout[0],1,addr,CC_MARKER_VALUE)==0)
                                 return eval->Invalid("invalid account marker vout.0 for pegsfund!");
-                            else if ( GetCCaddress1of2(cp,addr,pegspk,pegspk) && ConstrainVout(tx.vout[1],1,addr,CC_MARKER_VALUE)==0)
+                            else if ( GetCCaddress1of2(cp,addr,srcpub,pegspk) && ConstrainVout(tx.vout[1],1,addr,CC_MARKER_VALUE)==0)
                                 return eval->Invalid("invalid account marker vout.1 for pegsfund!");
                             if (GetTokensCCaddress1of2(cp,addr,srcpub,pegspk) && ConstrainVout(tx.vout[2],1,addr,amount)==0)
                                 return ("invalid tokens destination or amount vout for pegsfund!");
