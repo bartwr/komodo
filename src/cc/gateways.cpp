@@ -153,7 +153,7 @@
 #define KMD_WIFTYPE 188
 #define KMD_TADDR 0
 #define CC_MARKER_VALUE 1000
-#define CC_TXFEE ASSETCHAINS_CCZEROTXFEE[EVAL_GATEWAYS]?0:10000
+#define CC_TXFEE 10000
 
 CScript EncodeGatewaysBindOpRet(uint8_t funcid,uint256 tokenid,std::string coin,int64_t totalsupply,uint256 oracletxid,uint8_t M,uint8_t N,std::vector<CPubKey> gatewaypubkeys,uint8_t taddr,uint8_t prefix,uint8_t prefix2,uint8_t wiftype)
 {
@@ -877,7 +877,7 @@ UniValue GatewaysBind(const CPubKey& pk, uint64_t txfee,std::string coin,uint256
             CCERR_RESULT("importgateway",CCLOG_ERROR, stream << "M."<<M<<"N."<<N<<" but pubkeys["<<i<<"] has no balance");
     }
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_GATEWAYS]?0:CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     _GetCCaddress(myTokenCCaddr,EVAL_TOKENS,mypk);
     gatewayspk = GetUnspendable(cp,0);
@@ -918,7 +918,7 @@ UniValue GatewaysDeposit(const CPubKey& pk, uint64_t txfee,uint256 bindtxid,int3
 
     cp = CCinit(&C,EVAL_GATEWAYS);
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_GATEWAYS]?0:CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     LOGSTREAM("gatewayscc",CCLOG_DEBUG2, stream << "GatewaysDeposit ht." << height << " " << refcoin << " " << (double)amount/COIN << " numpks." << (int32_t)pubkeys.size() << std::endl);
     if ( myGetTransaction(bindtxid,tx,hashBlock) == 0 || (numvouts= tx.vout.size()) <= 0 )
@@ -971,7 +971,7 @@ UniValue GatewaysClaim(const CPubKey& pk, uint64_t txfee,uint256 bindtxid,std::s
 
     cp = CCinit(&C,EVAL_GATEWAYS);
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_GATEWAYS]?0:CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     gatewayspk = GetUnspendable(cp,0);
     if ( myGetTransaction(bindtxid,tx,hashBlock) == 0 || (numvouts= tx.vout.size()) <= 0 )
@@ -1015,7 +1015,7 @@ UniValue GatewaysWithdraw(const CPubKey& pk, uint64_t txfee,uint256 bindtxid,std
     cp = CCinit(&C,EVAL_GATEWAYS);
     cpTokens = CCinit(&CTokens,EVAL_TOKENS);
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_GATEWAYS]?0:CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     gatewayspk = GetUnspendable(cp, 0);
     if ( myGetTransaction(bindtxid,tx,hashBlock) == 0 || (numvouts= tx.vout.size()) <= 0 )
@@ -1056,7 +1056,7 @@ UniValue GatewaysWithdrawSign(const CPubKey& pk, uint64_t txfee,uint256 lasttxid
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     gatewayspk = GetUnspendable(cp,0);
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_GATEWAYS]?0:CC_TXFEE;
     if (myGetTransaction(lasttxid,tx,hashBlock)==0 || (numvouts= tx.vout.size())<=0
         || (funcid=DecodeGatewaysOpRet(tx.vout[numvouts-1].scriptPubKey))==0 || (funcid!='W' && funcid!='S'))
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "invalid last txid" << lasttxid.GetHex());
@@ -1109,7 +1109,7 @@ UniValue GatewaysMarkDone(const CPubKey& pk, uint64_t txfee,uint256 withdrawsign
     cp = CCinit(&C,EVAL_GATEWAYS);
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());    
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_GATEWAYS]?0:CC_TXFEE;
     if (myGetTransaction(withdrawsigntxid,tx,hashBlock)==0 || (numvouts= tx.vout.size())<=0)
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "invalid withdrawsign txid " << withdrawsigntxid.GetHex());
     else if (DecodeGatewaysWithdrawSignOpRet(tx.vout[numvouts-1].scriptPubKey,withdrawtxid,tmplasttxid,signingpubkeys,coin,K,hex)!='S' || refcoin!=coin)

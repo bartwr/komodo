@@ -96,7 +96,7 @@ pegs CC is able to create a coin backed (by any supported coin with gateways CC 
 #define PEGS_ACCOUNT_RED_ZONE 90
 #endif // PEGS_THRESHOLDS
 #define CC_MARKER_VALUE 1000
-#define CC_TXFEE ASSETCHAINS_CCZEROTXFEE[EVAL_PEGS]?0:10000
+#define CC_TXFEE 10000
 
 extern uint64_t ASSETCHAINS_PEGSCCPARAMS[3];
 
@@ -485,6 +485,15 @@ std::string PegsFindBestAccount(struct CCcontract_info *cp,uint256 pegstxid, uin
     else return("");
 }
 
+bool CheckSynthetic(std::string description)
+{
+    std::vector<std::string> vexpr; std::vector<uint16_t> exp;
+
+    SplitStr(description, vexpr);
+    if (prices_syntheticvec(exp, vexpr)==0) return (false);
+    return (true);
+}
+
 std::string ValidateAccount(const CTransaction &tx, const uint256 &tokenid,const std::pair <int64_t,int64_t> &prevaccount)
 {
     struct CCcontract_info *cp,C; CPubKey pegspk,pk; char addr[64]; int64_t amount; std::pair <int64_t,int64_t> account(0,0);
@@ -521,8 +530,8 @@ std::string ValidateAccount(const CTransaction &tx, const uint256 &tokenid,const
 bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, uint32_t nIn)
 {
     int32_t numvins,numvouts,preventCCvins,preventCCvouts,i,numblocks; bool retval; uint256 txid,pegstxid,tokenid,accounttxid,hashBlock;
-    uint8_t funcid; char str[65],destaddr[64],addr[64]; int64_t amount; std::pair <int64_t,int64_t> account(0,0),prevaccount(0,0);
-    CPubKey srcpub,pegspk; std::string error; std::vector<uint256> bindtxids; CTransaction tmptx;
+    uint8_t funcid; char str[65],destaddr[64],addr[64]; int64_t amount; std::pair <int64_t,int64_t> account(0,0),prevaccount(0,0); 
+    CPubKey srcpub,pegspk; std::string error,name,description; std::vector<uint256> bindtxids; CTransaction tmptx; std::vector<uint8_t> vorigpubkey;
 
     numvins = tx.vin.size();
     numvouts = tx.vout.size();
@@ -568,7 +577,13 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
                         if (myGetTransaction(pegstxid,tmptx,hashBlock)==0 || (numvouts=tmptx.vout.size())<=0)
                             return eval->Invalid("invalid pegs txid!"); 
                         else if (DecodePegsCreateOpRet(tmptx.vout[numvouts-1].scriptPubKey,bindtxids)!='C')
-                            return eval->Invalid("invalid pegscreate OP_RETURN data!"); 
+                            return eval->Invalid("invalid pegscreate OP_RETURN data!");
+                        else if (myGetTransaction(tokenid,tmptx,hashBlock)==0 || (numvouts=tmptx.vout.size())<=0)
+                            return eval->Invalid("invalid token id!"); 
+                        else if (DecodeTokenCreateOpRet(tmptx.vout[numvouts-1].scriptPubKey,vorigpubkey,name,description)!='c')
+                            return eval->Invalid("invalid token OP_RETURN data!");
+                        else if (!CheckSynthetic(description))
+                            return eval->Invalid("invalid synthetic in token description field. You must put the price synthetic in token description field!");
                         else if ((numvouts=tx.vout.size()) < 1 || DecodePegsAccountOpRet(tx.vout[numvouts-1].scriptPubKey,tokenid,pegstxid,srcpub,amount,account)!='F')
                             return eval->Invalid("invalid pegsfund OP_RETURN data!"); 
                         else if (PegsFindAccount(cp,srcpub,pegstxid,tokenid,accounttxid,prevaccount)!=0 && !(error=ValidateAccount(tx,tokenid,prevaccount)).empty())
@@ -763,7 +778,7 @@ UniValue PegsCreate(const CPubKey& pk,uint64_t txfee,int64_t amount, std::vector
 
     cp = CCinit(&C,EVAL_PEGS);
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_PEGS]?0:CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     for(auto txid : bindtxids)
@@ -791,7 +806,7 @@ UniValue PegsFund(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 tok
     cp = CCinit(&C,EVAL_PEGS);
     cpTokens = CCinit(&CTokens,EVAL_TOKENS);
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_PEGS]?0:CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)
@@ -858,7 +873,7 @@ UniValue PegsGet(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 toke
 
     cp = CCinit(&C,EVAL_PEGS);
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_PEGS]?0:CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)
@@ -907,7 +922,7 @@ UniValue PegsRedeem(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 t
     cp = CCinit(&C,EVAL_PEGS);
     cpTokens = CCinit(&CTokens,EVAL_TOKENS);
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_PEGS]?0:CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)
@@ -978,7 +993,7 @@ UniValue PegsClose(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 to
     cp = CCinit(&C,EVAL_PEGS);
     cpTokens = CCinit(&CTokens,EVAL_TOKENS);
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_PEGS]?0:CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)
@@ -1052,7 +1067,7 @@ UniValue PegsExchange(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256
     cp = CCinit(&C,EVAL_PEGS);
     cpTokens = CCinit(&CTokens,EVAL_TOKENS);
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_PEGS]?0:CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)
@@ -1140,7 +1155,7 @@ UniValue PegsLiquidate(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint25
     cp = CCinit(&C,EVAL_PEGS);
     cpTokens = CCinit(&CTokens,EVAL_TOKENS);
     if ( txfee == 0 )
-        txfee = CC_TXFEE;
+        txfee = ASSETCHAINS_CCZEROTXFEE[EVAL_PEGS]?0:CC_TXFEE;
     mypk = pk.IsValid()?pk:pubkey2pk(Mypubkey());
     pegspk = GetUnspendable(cp,0);
     if (myGetTransaction(pegstxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0)
