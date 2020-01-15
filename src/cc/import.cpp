@@ -377,12 +377,12 @@ int32_t CheckPegsimport(CTransaction importTx,uint256 pegstxid, uint256 tokenid,
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "vin.2 is CC for pegsget!" << std::endl);
         return(-1);
     }
-    else if ( GetCCaddress1of2(cp,addr,srcpub,pegspk) && ConstrainVout(importTx.vout[0],1,addr,CC_MARKER_VALUE)==0)
+    else if ( GetCCaddress1of2(cp,addr,pegspk,pegspk) && ConstrainVout(importTx.vout[0],1,addr,CC_MARKER_VALUE)==0)
     { 
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "invalid account marker vout.0 for pegsget!" << std::endl);
         return(-1);
     }
-    else if ( GetCCaddress1of2(cp,addr,pegspk,pegspk) && ConstrainVout(importTx.vout[1],1,addr,CC_MARKER_VALUE)==0)
+    else if ( GetCCaddress1of2(cp,addr,srcpub,pegspk) && ConstrainVout(importTx.vout[1],1,addr,CC_MARKER_VALUE)==0)
     { 
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "invalid account marker vout.1 for pegsget!" << std::endl);
         return(-1);
