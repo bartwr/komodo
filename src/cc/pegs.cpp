@@ -295,17 +295,17 @@ char PegsFindAccount(struct CCcontract_info *cp,CPubKey pk,uint256 pegstxid, uin
             acctx=tx;
         }
     }
-    if (accounttxid!=zeroid && myIsutxo_spentinmempool(spenttxid,ignorevin,accounttxid,1) != 0)
-    {
-        accounttxid=zeroid;
-        if (myGetTransaction(spenttxid,tx,hashBlock)!=0 && (numvouts=tx.vout.size()) > 0 &&
-            (f=DecodePegsOpRet(tx,tmppegstxid,tmptokenid))!=0 && pegstxid==tmppegstxid && tokenid==tmptokenid)
-        {
-            funcid=f;
-            accounttxid=spenttxid;
-            acctx=tx;          
-        }
-    }
+    // if (accounttxid!=zeroid && myIsutxo_spentinmempool(spenttxid,ignorevin,accounttxid,1) != 0)
+    // {
+    //     accounttxid=zeroid;
+    //     if (myGetTransaction(spenttxid,tx,hashBlock)!=0 && (numvouts=tx.vout.size()) > 0 &&
+    //         (f=DecodePegsOpRet(tx,tmppegstxid,tmptokenid))!=0 && pegstxid==tmppegstxid && tokenid==tmptokenid)
+    //     {
+    //         funcid=f;
+    //         accounttxid=spenttxid;
+    //         acctx=tx;          
+    //     }
+    // }
     if (accounttxid!=zeroid)
     {
         PegsDecodeAccountTx(acctx,tmppk,tmpamount,account);
@@ -612,7 +612,7 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
                             return eval->Invalid("invalid pegsredeem OP_RETURN data!");
                         else if (PegsFindAccount(cp,srcpub,pegstxid,tokenid,accounttxid,prevaccount)==0)
                             return eval->Invalid("no account found, please create account first with pegsredeem!");
-                        else if (accounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,accounttxid,1) != 0)
+                        else if (accounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,accounttxid,1) != 0 && ignoretxid!=tx.GetHash())
                             return eval->Invalid("previous account tx not yet confirmed");
                         else if (!(error=ValidateAccount(tx,tokenid,prevaccount)).empty())
                             return eval->Invalid(error);
@@ -633,7 +633,7 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
                             return eval->Invalid("invalid pegsclose OP_RETURN data!"); 
                         else if (PegsFindAccount(cp,srcpub,pegstxid,tokenid,accounttxid,prevaccount)==0)
                             return eval->Invalid("no account found, please create account first with pegsclose!");
-                        else if (accounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,accounttxid,1) != 0)
+                        else if (accounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,accounttxid,1) != 0 && ignoretxid!=tx.GetHash())
                             return eval->Invalid("previous account tx not yet confirmed");
                         else if (!(error=ValidateAccount(tx,tokenid,prevaccount)).empty())
                             return eval->Invalid(error);
@@ -652,7 +652,7 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
                             return eval->Invalid("invalid pegsexchange OP_RETURN data!"); 
                         else if (PegsFindAccount(cp,srcpub,pegstxid,tokenid,accounttxid,prevaccount)==0)
                             return eval->Invalid("no account found, please create account first with pegsexchange!");
-                        else if (accounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,accounttxid,1) != 0)
+                        else if (accounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,accounttxid,1) != 0 && ignoretxid!=tx.GetHash())
                             return eval->Invalid("previous account tx not yet confirmed");
                         else if (!(error=ValidateAccount(tx,tokenid,prevaccount)).empty())
                             return eval->Invalid(error);
@@ -667,7 +667,7 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
                             return eval->Invalid("invalid pegsliquidate OP_RETURN data!"); 
                         else if (PegsFindAccount(cp,srcpub,pegstxid,tokenid,accounttxid,prevaccount)==0)
                             return eval->Invalid("no account found, please create account first with pegsliquidate!");
-                        else if (accounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,accounttxid,1) != 0)
+                        else if (accounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,accounttxid,1) != 0 && ignoretxid!=tx.GetHash())
                             return eval->Invalid("previous account tx not yet confirmed");
                         else if (!(error=ValidateAccount(tx,tokenid,prevaccount)).empty())
                             return eval->Invalid(error);

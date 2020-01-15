@@ -392,8 +392,9 @@ int32_t CheckPegsimport(CTransaction importTx,uint256 pegstxid, uint256 tokenid,
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "cannot find account from which to issue coins, fund account first with pegsfund!" << std::endl);
         return(-1);
     }
-    else if (prevaccounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,prevaccounttxid,1) != 0)
+    else if (prevaccounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,prevaccounttxid,1) != 0 && ignoretxid!=importTx.GetHash())
     { 
+        fprintf(stderr,"%s %d %s\n",prevaccounttxid.GetHex().c_str(),myIsutxo_spentinmempool(ignoretxid,ignorevin,prevaccounttxid,1),ignoretxid.GetHex().c_str());
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "previous account tx not yet confirmed" << std::endl);
         return(-1);
     }
@@ -409,6 +410,7 @@ int32_t CheckPegsimport(CTransaction importTx,uint256 pegstxid, uint256 tokenid,
     }
     else if (prevaccount.second+amount!=account.second || prevaccount.first!=account.first)
     { 
+        fprintf(stderr,"%ld %ld %ld %ld %ld\n",prevaccount.second,amount,account.second,prevaccount.first,account.first);
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "invalid previous and current account comparisons!" << std::endl);
         return(-1);
     }
