@@ -357,7 +357,7 @@ int32_t CheckCODAimport(CTransaction importTx,CTransaction burnTx,std::vector<CT
 
 int32_t CheckPegsimport(CTransaction importTx,uint256 pegstxid, uint256 tokenid, CPubKey srcpub, int64_t amount, std::pair <int64_t,int64_t> account)
 {
-    struct CCcontract_info *cp,C; char addr[64]; CPubKey pegspk,tmpsrcpub; uint256 tmppegstxid,tmptokenid,prevaccounttxid;
+    struct CCcontract_info *cp,C; char addr[64]; CPubKey pegspk; uint256 prevaccounttxid;
     std::pair <int64_t,int64_t> prevaccount(0,0);
 
     cp = CCinit(&C,EVAL_PEGS);
@@ -387,7 +387,7 @@ int32_t CheckPegsimport(CTransaction importTx,uint256 pegstxid, uint256 tokenid,
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "invalid account marker vout.1 for pegsget!" << std::endl);
         return(-1);
     }
-    else if (PegsFindAccount(cp,tmpsrcpub,tmppegstxid,tmptokenid,prevaccounttxid,prevaccount)==0)
+    else if (PegsFindAccount(cp,srcpub,pegstxid,tokenid,prevaccounttxid,prevaccount)==0)
     { 
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "cannot find account from which to issue coins, fund account first with pegsfund!" << std::endl);
         return(-1);
