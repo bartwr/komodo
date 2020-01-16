@@ -897,14 +897,15 @@ UniValue GatewaysBind(const CPubKey& pk, uint64_t txfee,std::string coin,uint256
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "illegal format (" << fstr << ") != (IhhL)");
     if ( GatewaysBindExists(cp,gatewayspk,tokenid) != 0 )
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "Gateway bind." << coin << " (" << tokenid.GetHex() << ") already exists");
-    if ( AddNormalinputs(mtx,mypk,txfee+CC_MARKER_VALUE,2,pk.IsValid()) > 0 )
+    if ( AddNormalinputs(mtx,mypk,txfee+CC_MARKER_VALUE,2,pk.IsValid()) >= txfee+CC_MARKER_VALUE )
     {
-        if (AddTokenCCInputs(cpTokens, mtx, mypk, tokenid, totalsupply, 64)>0)
+        if (AddTokenCCInputs(cpTokens, mtx, mypk, tokenid, totalsupply, 64)==totalsupply)
         {
             mtx.vout.push_back(MakeTokensCC1vout(cp->evalcode,totalsupply,gatewayspk));       
             mtx.vout.push_back(MakeCC1vout(cp->evalcode,CC_MARKER_VALUE,gatewayspk));
             return(FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodeGatewaysBindOpRet('B',tokenid,coin,totalsupply,oracletxid,M,N,pubkeys,taddr,prefix,prefix2,wiftype)));
         }
+        CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "you must have total supply of tokens in your tokens address!");
     }
     CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "cant find enough inputs");
 }
@@ -952,7 +953,7 @@ UniValue GatewaysDeposit(const CPubKey& pk, uint64_t txfee,uint256 bindtxid,int3
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "cointxid." << cointxid.GetHex() << " already exists");
     if ( GatewaysVerify(depositaddr,oracletxid,claimvout,coin,cointxid,deposithex,proof,merkleroot,destpub,taddr,prefix,prefix2) != amount )
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "deposittxid didnt validate");
-    if ( AddNormalinputs(mtx,mypk,txfee+2*CC_MARKER_VALUE,3,pk.IsValid()) > 0 )
+    if ( AddNormalinputs(mtx,mypk,txfee+2*CC_MARKER_VALUE,3,pk.IsValid()) >= txfee+2*CC_MARKER_VALUE )
     {
         mtx.vout.push_back(MakeCC1vout(cp->evalcode,CC_MARKER_VALUE,destpub));
         mtx.vout.push_back(CTxOut(CC_MARKER_VALUE,CScript() << ParseHex(HexStr(CCtxidaddr(txidaddr,cointxid))) << OP_CHECKSIG));
@@ -992,7 +993,7 @@ UniValue GatewaysClaim(const CPubKey& pk, uint64_t txfee,uint256 bindtxid,std::s
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "different destination pubkey from desdeposit tx");
     if ( (depositamount=GatewaysDepositval(tx,mypk)) != amount )
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "invalid Gateways deposittxid " << deposittxid.GetHex() << " " << (double)depositamount/COIN << " != " << (double)amount/COIN << ", remember claim must be done from destination pubkey from deposit tx!");
-    if ((inputs=AddGatewaysInputs(cp, mtx, gatewayspk, bindtxid, amount, 60)) > 0)
+    if ((inputs=AddGatewaysInputs(cp, mtx, gatewayspk, bindtxid, amount, 60)) >= amount)
     {
         if ( inputs > amount ) CCchange = (inputs - amount);
         mtx.vin.push_back(CTxIn(deposittxid,0,CScript()));
@@ -1030,9 +1031,9 @@ UniValue GatewaysWithdraw(const CPubKey& pk, uint64_t txfee,uint256 bindtxid,std
     for (i=0; i<n; i++)
         if ( (balance=CCOraclesGetDepositBalance("gatewayscc-2",oracletxid,OraclesBatontxid(oracletxid,pubkeys[i])))==0 || amount > balance )
             CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "withdraw amount is not possible, deposit balance is lower than the amount!");
-    if( AddNormalinputs(mtx, mypk, txfee+CC_MARKER_VALUE, 2,pk.IsValid()) > 0 )
+    if( AddNormalinputs(mtx, mypk, txfee+CC_MARKER_VALUE, 2,pk.IsValid()) >= txfee+CC_MARKER_VALUE )
     {
-		if ((inputs = AddTokenCCInputs(cpTokens, mtx, mypk, tokenid, amount, 60)) > 0)
+		if ((inputs = AddTokenCCInputs(cpTokens, mtx, mypk, tokenid, amount, 60)) >= amount)
         {
             if ( inputs > amount ) CCchange = (inputs - amount);
             mtx.vout.push_back(MakeCC1vout(EVAL_GATEWAYS,CC_MARKER_VALUE,gatewayspk));
@@ -1089,7 +1090,7 @@ UniValue GatewaysWithdrawSign(const CPubKey& pk, uint64_t txfee,uint256 lasttxid
         else if (DecodeGatewaysBindOpRet(depositaddr,tmptx.vout[numvouts-1].scriptPubKey,tokenid,coin,totalsupply,oracletxid,M,N,pubkeys,taddr,prefix,prefix2,wiftype) != 'B' || refcoin!=coin || tokenid!=tmptokenid)
             CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "invalid bind tx "<< bindtxid.GetHex());
     }
-    if (AddNormalinputs(mtx,mypk,txfee,3,pk.IsValid())!=0) 
+    if (AddNormalinputs(mtx,mypk,txfee,3,pk.IsValid())>=txfee) 
     {
         mtx.vin.push_back(CTxIn(lasttxid,0,CScript()));
         mtx.vout.push_back(MakeCC1vout(EVAL_GATEWAYS,CC_MARKER_VALUE,gatewayspk));
@@ -1122,7 +1123,7 @@ UniValue GatewaysMarkDone(const CPubKey& pk, uint64_t txfee,uint256 withdrawsign
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "can't find bind tx " << bindtxid.GetHex());
     else if (DecodeGatewaysBindOpRet(depositaddr,tx.vout[numvouts-1].scriptPubKey,tokenid,coin,totalsupply,oracletxid,M,N,pubkeys,taddr,prefix,prefix2,wiftype) != 'B' || refcoin!=coin || tokenid!=tmptokenid)
             CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "invalid bind tx "<< bindtxid.GetHex());
-    if (AddNormalinputs(mtx,mypk,txfee,3)!=0) 
+    if (AddNormalinputs(mtx,mypk,txfee,3)>=txfee) 
     {
         mtx.vin.push_back(CTxIn(withdrawsigntxid,0,CScript()));
         mtx.vout.push_back(CTxOut(CC_MARKER_VALUE,CScript() << ParseHex(HexStr(mypk)) << OP_CHECKSIG));        

@@ -8123,7 +8123,7 @@ UniValue pegsredeem(const UniValue& params, bool fHelp, const CPubKey& mypk)
 {
     UniValue result(UniValue::VOBJ); uint256 pegstxid,tokenid; int64_t amount;
 
-    if ( fHelp || params.size()!=2)
+    if ( fHelp || params.size()!=3)
         throw runtime_error("pegsredeem pegstxid tokenid amount\n");
     if ( ensure_CCrequirements(EVAL_PEGS) < 0 )
         throw runtime_error(CC_REQUIREMENTS_MSG);
