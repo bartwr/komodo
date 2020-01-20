@@ -1311,7 +1311,7 @@ UniValue PegsAccountInfo(const CPubKey& pk,uint256 pegstxid)
     {
         UniValue obj(UniValue::VOBJ);
         obj.push_back(Pair("token",PegsGetTokenName(it->first)));
-        obj.push_back(Pair("price",PegsGetTokenPrice(it->first)));
+        obj.push_back(Pair("price",(double)PegsGetTokenPrice(it->first)/COIN));
         obj.push_back(Pair("deposit",accounts[it->first].first));
         obj.push_back(Pair("debt",accounts[it->first].second));
         if (accounts[it->first].first==0 || accounts[it->first].second==0 || PegsGetTokenPrice(it->first)<=0) obj.push_back(Pair("ratio",0));
@@ -1433,7 +1433,7 @@ UniValue PegsInfo(uint256 pegstxid)
     {
         UniValue obj(UniValue::VOBJ);
         obj.push_back(Pair("token",PegsGetTokenName(it->first)));
-        obj.push_back(Pair("price",PegsGetTokenPrice(it->first)));
+        obj.push_back(Pair("price",(double)PegsGetTokenPrice(it->first)/COIN));
         obj.push_back(Pair("total deposit",globalaccounts[it->first].first));
         obj.push_back(Pair("total debt",globalaccounts[it->first].second));
         if (globalaccounts[it->first].first==0 || globalaccounts[it->first].second==0 || PegsGetTokenPrice(it->first)<=0) obj.push_back(Pair("total ratio",0));
