@@ -815,8 +815,8 @@ int64_t AddGatewaysInputs(struct CCcontract_info *cp,CMutableTransaction &mtx,CP
                         mtx.vin.push_back(CTxIn(txid,vout,CScript()));
                         totalinputs += it->second.satoshis;
                         n++;
-                        if ( (total > 0 && totalinputs >= total) || (maxinputs > 0 && n >= maxinputs)) break;
-                    }       
+                    }
+                    if ( totalinputs >= total || (maxinputs > 0 && n >= maxinputs)) break;      
                 }
             }
             return(totalinputs);
