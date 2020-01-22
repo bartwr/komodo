@@ -456,7 +456,7 @@ std::string PegsFindBestAccount(struct CCcontract_info *cp,uint256 pegstxid, uin
         nValue = (int64_t)it->second.satoshis;
         LOGSTREAM("pegscc",CCLOG_DEBUG2, stream << "txid=" << txid.GetHex() << ", vout=" << vout << ", nValue=" << nValue << std::endl);
         if (vout == 0 && nValue == CC_MARKER_VALUE && myIsutxo_spentinmempool(ignoretxid,ignorevin,txid,0) == 0 &&
-            (ratio=PegsGetAccountRatio(pegstxid,tokenid,txid))>ASSETCHAINS_PEGSCCPARAMS[2]?ASSETCHAINS_PEGSCCPARAMS[2]:PEGS_ACCOUNT_YELLOW_ZONE && ratio>maxratio)
+            (ratio=PegsGetAccountRatio(pegstxid,tokenid,txid))>=ASSETCHAINS_PEGSCCPARAMS[2]?ASSETCHAINS_PEGSCCPARAMS[2]:PEGS_ACCOUNT_YELLOW_ZONE && ratio>maxratio)
         {   
             if (myGetTransaction(txid,tx,hashBlock)!=0 && !PegsDecodeAccountTx(tx,tmppk,tmpamount,tmpaccount,accountpk).empty() && tmpaccount.first>=tokenamount)
             {
@@ -495,7 +495,7 @@ std::string ValidateAccount(const CTransaction &tx, const uint256 &tokenid,const
         return ("vin.1 is CC account marker CC for pegs"+name+"!");
     else if ( GetCCaddress1of2(cp,addr,pegspk,pegspk) && ConstrainVout(tx.vout[0],1,addr,CC_MARKER_VALUE)==0)
         return ("invalid account marker vout.0 for pegs"+name+"!");
-    else if ( GetCCaddress1of2(cp,addr,pk,pegspk) && ConstrainVout(tx.vout[1],1,addr,CC_MARKER_VALUE)==0)
+    else if ( GetCCaddress1of2(cp,addr,accountpk,pegspk) && ConstrainVout(tx.vout[1],1,addr,CC_MARKER_VALUE)==0)
         return ("invalid account marker vout.1 for pegs"+name+"!");
     else if (name=="fund" && (prevaccount.first+amount!=account.first || prevaccount.second!=account.second))
             return ("invalid previous and current account comparisons!");
@@ -641,9 +641,9 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
                             return eval->Invalid("previous account tx not yet confirmed!");
                         else if (!(error=ValidateAccount(tx,tokenid,prevaccount)).empty())
                             return eval->Invalid(error);
-                        else if (PegsGetAccountRatio(pegstxid,tokenid,accounttxid)>=ASSETCHAINS_PEGSCCPARAMS[2]?ASSETCHAINS_PEGSCCPARAMS[2]:PEGS_ACCOUNT_YELLOW_ZONE)
+                        else if (PegsGetAccountRatio(pegstxid,tokenid,accounttxid)>=(ASSETCHAINS_PEGSCCPARAMS[2]?ASSETCHAINS_PEGSCCPARAMS[2]:PEGS_ACCOUNT_YELLOW_ZONE))
                             return eval->Invalid("cannot exchange coins from account that is already in yellow zone!");
-                        else if (PegsGetRatio(tokenid,account)>=ASSETCHAINS_PEGSCCPARAMS[0]?ASSETCHAINS_PEGSCCPARAMS[0]:PEGS_ACCOUNT_RED_ZONE)
+                        else if (PegsGetRatio(tokenid,account)>=(ASSETCHAINS_PEGSCCPARAMS[0]?ASSETCHAINS_PEGSCCPARAMS[0]:PEGS_ACCOUNT_RED_ZONE))
                             return eval->Invalid("cannot exchange coins from account as it will leave the account in the red zone!");
                         else if (_GetCCaddress(addr,EVAL_TOKENS,srcpub) && ConstrainVout(tx.vout[2],1,addr,prevaccount.first-account.first)==0)
                             return ("invalid tokens destination or amount vout.2 for pegsexchange!");
