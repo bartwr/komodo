@@ -133,7 +133,7 @@ CScript EncodePegsAccountOpRet(uint8_t funcid,uint256 tokenid,uint256 pegstxid,C
 
     cp = CCinit(&C,EVAL_PEGS);
     pegspk = GetUnspendable(cp,0);
-    pubkeys.push_back(srcpub);
+    pubkeys.push_back(accountpk);
     pubkeys.push_back(pegspk);
     vopret = E_MARSHAL(ss << evalcode << funcid << pegstxid << srcpub << amount << account << accountpk);        
     return(EncodeTokenOpRet(tokenid,pubkeys,make_pair(OPRETID_PEGSDATA, vopret)));
@@ -641,8 +641,8 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
                             return eval->Invalid("previous account tx not yet confirmed!");
                         else if (!(error=ValidateAccount(tx,tokenid,prevaccount)).empty())
                             return eval->Invalid(error);
-                        else if (PegsGetAccountRatio(pegstxid,tokenid,accounttxid)>=(ASSETCHAINS_PEGSCCPARAMS[2]?ASSETCHAINS_PEGSCCPARAMS[2]:PEGS_ACCOUNT_YELLOW_ZONE))
-                            return eval->Invalid("cannot exchange coins from account that is already in yellow zone!");
+                        else if (PegsGetAccountRatio(pegstxid,tokenid,accounttxid)<(ASSETCHAINS_PEGSCCPARAMS[2]?ASSETCHAINS_PEGSCCPARAMS[2]:PEGS_ACCOUNT_YELLOW_ZONE))
+                            return eval->Invalid("cannot exchange coins from account that is not yellow zone!");
                         else if (PegsGetRatio(tokenid,account)>=(ASSETCHAINS_PEGSCCPARAMS[0]?ASSETCHAINS_PEGSCCPARAMS[0]:PEGS_ACCOUNT_RED_ZONE))
                             return eval->Invalid("cannot exchange coins from account as it will leave the account in the red zone!");
                         else if (_GetCCaddress(addr,EVAL_TOKENS,srcpub) && ConstrainVout(tx.vout[2],1,addr,prevaccount.first-account.first)==0)
