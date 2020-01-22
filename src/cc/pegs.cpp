@@ -134,7 +134,7 @@ CScript EncodePegsAccountOpRet(uint8_t funcid,uint256 tokenid,uint256 pegstxid,C
     cp = CCinit(&C,EVAL_PEGS);
     pegspk = GetUnspendable(cp,0);
     pubkeys.push_back(accountpk);
-    pubkeys.push_back(srcpub);
+    if (srcpub!=accountpk) pubkeys.push_back(srcpub);
     vopret = E_MARSHAL(ss << evalcode << funcid << pegstxid << srcpub << amount << account << accountpk);        
     return(EncodeTokenOpRet(tokenid,pubkeys,make_pair(OPRETID_PEGSDATA, vopret)));
 }
@@ -335,7 +335,7 @@ int64_t PegsGetTokensAmountPerPrice(int64_t amount,uint256 tokenid)
     mpz_t res,a,b;
     int64_t price=PegsGetTokenPrice(tokenid);
     
-    if (price=0) return (0);
+    if (price==0) return (0);
     mpz_init(res);
     mpz_init(a);
     mpz_init(b);
