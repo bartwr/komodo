@@ -1115,11 +1115,11 @@ UniValue PegsExchange(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256
                     CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "invalid account tx from which to exchange coins to tokens " << accounttxid.GetHex());
                 if (accounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,accounttxid,1) != 0)
                     CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "previous account tx not yet confirmed");
-                tokenfunds+=AddPegsTokenInputs(cp,mtx,pegstxid,tokenid,tmppk,pegspk,tokenamount,64);
+                tokenfunds+=AddPegsTokenInputs(cp,mtx,pegstxid,tokenid,accountpk,pegspk,tokenamount,64);
                 mtx.vin.insert(mtx.vin.begin(),CTxIn(accounttxid,0,CScript()));
                 mtx.vin.insert(mtx.vin.begin(),CTxIn(accounttxid,1,CScript()));
-                GetCCaddress1of2(cp,coinaddr,tmppk,pegspk);
-                CCaddr1of2set(cp,tmppk,pegspk,cp->CCpriv,coinaddr);
+                GetCCaddress1of2(cp,coinaddr,accountpk,pegspk);
+                CCaddr1of2set(cp,accountpk,pegspk,cp->CCpriv,coinaddr);
                 pegsfunds+=2*CC_MARKER_VALUE;
             }
             if (tokenfunds>=tokenamount)
@@ -1127,13 +1127,13 @@ UniValue PegsExchange(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256
                 if (accounttxid!=zeroid)
                 {        
                     mtx.vout.push_back(MakeCC1of2vout(EVAL_PEGS,CC_MARKER_VALUE,pegspk,pegspk));
-                    mtx.vout.push_back(MakeCC1of2vout(EVAL_PEGS,CC_MARKER_VALUE,tmppk,pegspk));
+                    mtx.vout.push_back(MakeCC1of2vout(EVAL_PEGS,CC_MARKER_VALUE,accountpk,pegspk));
                 }
                 if ((accounttxid!=zeroid && pegsfunds>=txfee+2*CC_MARKER_VALUE) || pegsfunds>=txfee)
                 {
                     mtx.vout.push_back(MakeCC1vout(EVAL_TOKENS,tokenamount,mypk));
                     mtx.vout.push_back(CTxOut(amount,CScript() << ParseHex(HexStr(CCtxidaddr(coinaddr,pegstxid))) << OP_CHECKSIG));
-                    if (tokenfunds>tokenamount) mtx.vout.push_back(MakeTokensCC1of2vout(EVAL_PEGS,tokenfunds-tokenamount,tmppk,pegspk));
+                    if (tokenfunds>tokenamount) mtx.vout.push_back(MakeTokensCC1of2vout(EVAL_PEGS,tokenfunds-tokenamount,accountpk,pegspk));
                     if (accounttxid!=zeroid)
                     {
                         if (pegsfunds>txfee+2*CC_MARKER_VALUE) mtx.vout.push_back(MakeCC1vout(EVAL_PEGS,pegsfunds-(txfee+2*CC_MARKER_VALUE),pegspk));
@@ -1142,7 +1142,7 @@ UniValue PegsExchange(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256
                     }
                     else if (pegsfunds>txfee) mtx.vout.push_back(MakeCC1vout(EVAL_PEGS,pegsfunds-txfee,pegspk));
                     LOGSTREAM("pegscc",CCLOG_DEBUG2, stream << "modified account [deposit=" << account.first << ",debt=" << account.second << "]" << std::endl);
-                    return(FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodePegsAccountOpRet('E',tokenid,pegstxid,mypk,amount,account,tmppk)));
+                    return(FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodePegsAccountOpRet('E',tokenid,pegstxid,mypk,amount,account,accountpk)));
                 }
                 else CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not enough balance in pegs global CC address");
             }
@@ -1211,14 +1211,14 @@ UniValue PegsLiquidate(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint25
             if ((pegsfunds=AddPegsInputs(cp,mtx,pegspk,CPubKey(),txfee,1))>=txfee)
                 CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not enough balance in pegs global CC address");  
             pegsfunds+=2*CC_MARKER_VALUE;
-            GetCCaddress1of2(cp,coinaddr,tmppk,pegspk);
-            CCaddr1of2set(cp,tmppk,pegspk,cp->CCpriv,coinaddr);            
-            if ((tokenfunds=AddPegsTokenInputs(cp,mtx,pegstxid,tokenid,tmppk,pegspk,tokenamount,64))==tokenamount)
+            GetCCaddress1of2(cp,coinaddr,accountpk,pegspk);
+            CCaddr1of2set(cp,accountpk,pegspk,cp->CCpriv,coinaddr);            
+            if ((tokenfunds=AddPegsTokenInputs(cp,mtx,pegstxid,tokenid,accountpk,pegspk,tokenamount,64))==tokenamount)
             {
                 if (pegsfunds>=txfee+2*CC_MARKER_VALUE)
                 {        
                     mtx.vout.push_back(MakeCC1of2vout(EVAL_PEGS,CC_MARKER_VALUE,pegspk,pegspk));
-                    mtx.vout.push_back(MakeCC1of2vout(EVAL_PEGS,CC_MARKER_VALUE,tmppk,pegspk));
+                    mtx.vout.push_back(MakeCC1of2vout(EVAL_PEGS,CC_MARKER_VALUE,accountpk,pegspk));
                     mtx.vout.push_back(MakeCC1vout(EVAL_TOKENS,amount,mypk));
                     mtx.vout.push_back(CTxOut(burnamount,CScript() << ParseHex(HexStr(CCtxidaddr(coinaddr,pegstxid))) << OP_CHECKSIG));
                     mtx.vout.push_back(MakeTokensCC1vout(EVAL_PEGS,tokenamount-amount,pegspk));
@@ -1226,7 +1226,7 @@ UniValue PegsLiquidate(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint25
                     account.first=0;
                     account.second=0;
                     LOGSTREAM("pegscc",CCLOG_DEBUG2, stream << "new account [deposit=" << account.first << ",debt=" << account.second << "]" << std::endl);
-                    return(FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodePegsAccountOpRet('L',tokenid,pegstxid,mypk,amount,account,tmppk)));
+                    return(FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodePegsAccountOpRet('L',tokenid,pegstxid,mypk,amount,account,accountpk)));
                 }
                 else CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not enough balance in pegs global CC address");
             }
