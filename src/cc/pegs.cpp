@@ -333,13 +333,16 @@ std::string PegsGetTokenName(uint256 tokenid)
 int64_t PegsGetTokensAmountPerPrice(int64_t amount,uint256 tokenid)
 {      
     mpz_t res,a,b;
+    int64_t price=PegsGetTokenPrice(tokenid);
+    
+    if (price=0) return (0);
     mpz_init(res);
     mpz_init(a);
     mpz_init(b);
     mpz_set_si(a, amount);
     mpz_set_si(b, COIN);
     mpz_mul(res, a, b);
-    mpz_set_si(a, PegsGetTokenPrice(tokenid));   
+    mpz_set_si(a, price);   
     mpz_tdiv_q(res, res, a);
     return (mpz_get_si(res));           
 }
