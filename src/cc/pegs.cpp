@@ -995,7 +995,7 @@ UniValue PegsRedeem(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 t
 UniValue PegsClose(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 tokenid)
 {
     CMutableTransaction mtx = CreateNewContextualCMutableTransaction(Params().GetConsensus(), komodo_nextheight()); std::string coin;
-    CTransaction pegstx,tx; int32_t numvouts; int64_t totalsupply,pegsfunds=0,funds=0,tokenfunds=0,amount; uint256 accounttxid=zeroid,hashBlock,txid,tmptokenid,oracletxid;
+    CTransaction pegstx,tx; int32_t numvouts; int64_t totalsupply,pegsfunds=0,funds=0,tokenfunds=0,tokenamount,burnamount; uint256 accounttxid=zeroid,hashBlock,txid,tmptokenid,oracletxid;
     CPubKey mypk,pegspk,tmppk; struct CCcontract_info *cp,*cpTokens,CTokens,C; char depositaddr[64],coinaddr[64]; std::pair <int64_t,int64_t> account(0,0);
     uint8_t M,N,taddr,prefix,prefix2,wiftype,mypriv[32]; std::vector<CPubKey> pubkeys; bool found=false; std::vector<uint256> bindtxids;
 
@@ -1041,18 +1041,19 @@ UniValue PegsClose(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 to
         if ((pegsfunds=AddPegsInputs(cp,mtx,pegspk,CPubKey(),txfee,1))>=txfee)
         {
             pegsfunds+=2*CC_MARKER_VALUE;
-            amount=account.first;
-            if ((tokenfunds=AddPegsTokenInputs(cp,mtx,pegstxid,tokenid,mypk,pegspk,amount,64))>=amount)
+            tokenamount=account.first;
+            burnamount=account.second;
+            if ((tokenfunds=AddPegsTokenInputs(cp,mtx,pegstxid,tokenid,mypk,pegspk,tokenamount,64))>=tokenamount)
             {   
                 mtx.vout.push_back(MakeCC1of2vout(EVAL_PEGS,CC_MARKER_VALUE,pegspk,pegspk));
                 mtx.vout.push_back(MakeCC1of2vout(EVAL_PEGS,CC_MARKER_VALUE,mypk,pegspk));
-                mtx.vout.push_back(MakeCC1vout(EVAL_TOKENS,amount,mypk));
+                mtx.vout.push_back(MakeCC1vout(EVAL_TOKENS,tokenamount,mypk));
                 mtx.vout.push_back(CTxOut(account.second,CScript() << ParseHex(HexStr(CCtxidaddr(coinaddr,pegstxid))) << OP_CHECKSIG));
                 if (pegsfunds>txfee+2*CC_MARKER_VALUE) mtx.vout.push_back(MakeCC1vout(EVAL_PEGS,pegsfunds-(txfee+2*CC_MARKER_VALUE),pegspk));
                 account.first=0;
                 account.second=0;
                 LOGSTREAM("pegscc",CCLOG_DEBUG2, stream << "new account [deposit=" << account.first << ",debt=" << account.second << "]" << std::endl);
-                UniValue retstr = FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodePegsAccountOpRet('X',tokenid,pegstxid,mypk,amount,account,mypk));
+                UniValue retstr = FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodePegsAccountOpRet('X',tokenid,pegstxid,mypk,burnamount,account,mypk));
                 return(retstr);
             }     
             else CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not enough tokens in pegs account (" << tokenfunds << ") to take this amount of tokens " << account.first);
