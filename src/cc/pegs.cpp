@@ -456,7 +456,7 @@ std::string PegsFindBestAccount(struct CCcontract_info *cp,uint256 pegstxid, uin
         nValue = (int64_t)it->second.satoshis;
         LOGSTREAM("pegscc",CCLOG_DEBUG2, stream << "txid=" << txid.GetHex() << ", vout=" << vout << ", nValue=" << nValue << std::endl);
         if (vout == 0 && nValue == CC_MARKER_VALUE && myIsutxo_spentinmempool(ignoretxid,ignorevin,txid,0) == 0 &&
-            (ratio=PegsGetAccountRatio(pegstxid,tokenid,txid))>(ASSETCHAINS_PEGSCCPARAMS[2]?ASSETCHAINS_PEGSCCPARAMS[2]:PEGS_ACCOUNT_YELLOW_ZONE) && ratio>maxratio)
+            (ratio=PegsGetAccountRatio(pegstxid,tokenid,txid))>ASSETCHAINS_PEGSCCPARAMS[2]?ASSETCHAINS_PEGSCCPARAMS[2]:PEGS_ACCOUNT_YELLOW_ZONE && ratio>maxratio)
         {   
             if (myGetTransaction(txid,tx,hashBlock)!=0 && !PegsDecodeAccountTx(tx,tmppk,tmpamount,tmpaccount,accountpk).empty() && tmpaccount.first>=tokenamount)
             {
@@ -635,7 +635,7 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
                         //vout.n-1: opreturn - 'E' tokenid pegstxid mypk amount account
                         if ((numvouts=tx.vout.size()) < 1 || DecodePegsAccountOpRet(tx.vout[numvouts-1].scriptPubKey,tokenid,pegstxid,srcpub,amount,account,accountpk)!='E')
                             return eval->Invalid("invalid pegsexchange OP_RETURN data!"); 
-                        else if (PegsFindAccount(cp,srcpub,pegstxid,tokenid,accounttxid,prevaccount)==0)
+                        else if (PegsFindAccount(cp,accountpk,pegstxid,tokenid,accounttxid,prevaccount)==0)
                             return eval->Invalid("no account found to exchange coins!");
                         else if (accounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,accounttxid,1) != 0 && ignoretxid!=tx.GetHash())
                             return eval->Invalid("previous account tx not yet confirmed!");
@@ -662,7 +662,7 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
                         //vout.n-1: opreturn - 'L' tokenid pegstxid mypk amount account
                         if ((numvouts=tx.vout.size()) < 1 || DecodePegsAccountOpRet(tx.vout[numvouts-1].scriptPubKey,tokenid,pegstxid,srcpub,amount,account,accountpk)!='L')
                             return eval->Invalid("invalid pegsliquidate OP_RETURN data!"); 
-                        else if (PegsFindAccount(cp,srcpub,pegstxid,tokenid,accounttxid,prevaccount)==0)
+                        else if (PegsFindAccount(cp,accountpk,pegstxid,tokenid,accounttxid,prevaccount)==0)
                             return eval->Invalid("cannot find the account to liquidate!");
                         else if (accounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,accounttxid,1) != 0 && ignoretxid!=tx.GetHash())
                             return eval->Invalid("previous liquidation account tx not yet confirmed");
