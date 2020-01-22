@@ -135,7 +135,6 @@ CScript EncodePegsAccountOpRet(uint8_t funcid,uint256 tokenid,uint256 pegstxid,C
     pegspk = GetUnspendable(cp,0);
     pubkeys.push_back(accountpk);
     pubkeys.push_back(srcpub);
-    pubkeys.push_back(pegspk);
     vopret = E_MARSHAL(ss << evalcode << funcid << pegstxid << srcpub << amount << account << accountpk);        
     return(EncodeTokenOpRet(tokenid,pubkeys,make_pair(OPRETID_PEGSDATA, vopret)));
 }
