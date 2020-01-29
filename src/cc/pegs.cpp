@@ -908,8 +908,10 @@ UniValue PegsGet(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 toke
     // coin issue
     vouts.push_back(CTxOut(amount,CScript() << ParseHex(HexStr(mypk)) << OP_CHECKSIG));
     account.second+=amount;
+#ifndef TESTMODE_PEGS
     if (PegsGetRatio(tokenid,account)>PEGS_ACCOUNT_MAX_DEBT)
         CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not possible to take more than " << PEGS_ACCOUNT_MAX_DEBT << "%% of the deposit");
+#endif
     LOGSTREAM("pegscc",CCLOG_DEBUG2, stream << "new account [deposit=" << account.first << ",debt=" << account.second << "]" << std::endl);
     // burn tx does not exist in pegs method but it must be created in order for import validation to pass
     // fictive burntx input of previous account state tx

@@ -398,11 +398,13 @@ int32_t CheckPegsimport(CTransaction importTx,uint256 pegstxid, uint256 tokenid,
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "previous account tx not yet confirmed" << std::endl);
         return(-1);
     }
+#ifndef TESTMODE_PEGS
     else if (PegsGetRatio(tokenid,account)>PEGS_ACCOUNT_MAX_DEBT)
     { 
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "not possible to take more than " << PEGS_ACCOUNT_MAX_DEBT << "%% of the deposit price value" << std::endl);
         return(-1);
     }
+#endif
     else if ( Getscriptaddress(addr,CScript() << ParseHex(HexStr(srcpub)) << OP_CHECKSIG) && ConstrainVout(importTx.vout[2],0,addr,amount)==0)
     { 
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "invalid destination or amount of coins issued with pegsget!" << std::endl);

@@ -337,9 +337,11 @@ static const char *notaries_elected[NUM_KMD_SEASONS][NUM_KMD_NOTARIES][2] =
 #define KOMODO_BIT63SET(x) ((x) & ((uint64_t)1 << 63))
 #define KOMODO_VALUETOOBIG(x) ((x) > (uint64_t)10000000001*COIN)
 
-// #define PRICES_DAYWINDOW ((3600*24/ASSETCHAINS_BLOCKTIME) + 1)
-// short period for testing:
-#define PRICES_DAYWINDOW (7)
+#ifdef TESTMODE_PRICES
+    #define PRICES_DAYWINDOW (7)
+#else
+    #define PRICES_DAYWINDOW ((3600*24/ASSETCHAINS_BLOCKTIME) + 1)
+#endif
 
 extern uint8_t ASSETCHAINS_TXPOW,ASSETCHAINS_PUBLIC;
 extern int8_t ASSETCHAINS_ADAPTIVEPOW;
