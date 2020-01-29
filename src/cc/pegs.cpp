@@ -911,6 +911,9 @@ UniValue PegsGet(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint256 toke
 #ifndef TESTMODE_PEGS
     if (PegsGetRatio(tokenid,account)>PEGS_ACCOUNT_MAX_DEBT)
         CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not possible to take more than " << PEGS_ACCOUNT_MAX_DEBT << "%% of the deposit");
+#else
+    if (PegsGetRatio(tokenid,account)>100)
+        CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not possible to take more than 100%% of the deposit");
 #endif
     LOGSTREAM("pegscc",CCLOG_DEBUG2, stream << "new account [deposit=" << account.first << ",debt=" << account.second << "]" << std::endl);
     // burn tx does not exist in pegs method but it must be created in order for import validation to pass
@@ -1193,8 +1196,8 @@ UniValue PegsLiquidate(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint25
         CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "cannot find account, you must have an account to liquidate another account!");
     if (accounttxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,accounttxid,1) != 0)
         CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "previous account tx not yet confirmed");
-    if (PegsGetAccountRatio(pegstxid,tokenid,liquidatetxid)<(ASSETCHAINS_PEGSCCPARAMS[0]?ASSETCHAINS_PEGSCCPARAMS[0]:PEGS_ACCOUNT_RED_ZONE) || PegsGetGlobalRatio(pegstxid)<(ASSETCHAINS_PEGSCCPARAMS[1]?ASSETCHAINS_PEGSCCPARAMS[1]:PEGS_ACCOUNT_RED_ZONE))
-        CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not able to liquidate account until account ratio > " << (ASSETCHAINS_PEGSCCPARAMS[0]?ASSETCHAINS_PEGSCCPARAMS[0]:PEGS_ACCOUNT_RED_ZONE) << "% and global ratio > " << (ASSETCHAINS_PEGSCCPARAMS[1]?ASSETCHAINS_PEGSCCPARAMS[1]:PEGS_ACCOUNT_RED_ZONE) << "%");
+    if (PegsGetAccountRatio(pegstxid,tokenid,liquidatetxid)<(ASSETCHAINS_PEGSCCPARAMS[0]?ASSETCHAINS_PEGSCCPARAMS[0]:PEGS_ACCOUNT_RED_ZONE) || PegsGetGlobalRatio(pegstxid)<(ASSETCHAINS_PEGSCCPARAMS[1]?ASSETCHAINS_PEGSCCPARAMS[1]:PEGS_GLOBAL_RED_ZONE))
+        CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not able to liquidate account until account ratio > " << (ASSETCHAINS_PEGSCCPARAMS[0]?ASSETCHAINS_PEGSCCPARAMS[0]:PEGS_ACCOUNT_RED_ZONE) << "% and global ratio > " << (ASSETCHAINS_PEGSCCPARAMS[1]?ASSETCHAINS_PEGSCCPARAMS[1]:PEGS_GLOBAL_RED_ZONE) << "%");
     if (liquidatetxid!=zeroid && myGetTransaction(liquidatetxid,tx,hashBlock)==0 || (numvouts=tx.vout.size())<=0 || PegsDecodeAccountTx(tx,tmppk,amount,account,accountpk).empty())
         CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "cannot find account to liquidate or invalid tx " << liquidatetxid.GetHex());
     if (liquidatetxid!=zeroid && myIsutxo_spentinmempool(ignoretxid,ignorevin,liquidatetxid,1) != 0)

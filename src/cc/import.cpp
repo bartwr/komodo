@@ -404,6 +404,12 @@ int32_t CheckPegsimport(CTransaction importTx,uint256 pegstxid, uint256 tokenid,
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "not possible to take more than " << PEGS_ACCOUNT_MAX_DEBT << "%% of the deposit price value" << std::endl);
         return(-1);
     }
+#else
+    else if (PegsGetRatio(tokenid,account)>100)
+    { 
+        LOGSTREAM("pegscc", CCLOG_ERROR, stream << "not possible to take more than 100%% of the deposit price value" << std::endl);
+        return(-1);
+    }
 #endif
     else if ( Getscriptaddress(addr,CScript() << ParseHex(HexStr(srcpub)) << OP_CHECKSIG) && ConstrainVout(importTx.vout[2],0,addr,amount)==0)
     { 
