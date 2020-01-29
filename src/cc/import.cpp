@@ -355,7 +355,7 @@ int32_t CheckCODAimport(CTransaction importTx,CTransaction burnTx,std::vector<CT
     return(0);
 }
 
-int32_t CheckPegsimport(CTransaction importTx,uint256 pegstxid, uint256 tokenid, CPubKey srcpub, int64_t amount, std::pair <int64_t,int64_t> account)
+int32_t CheckPegsimport(CTransaction importTx,uint256 pegstxid, uint256 tokenid, CPubKey srcpub, int64_t amount, std::pair <int64_t,int64_t> account, CPubKey accountpk)
 {
     struct CCcontract_info *cp,C; char addr[64]; CPubKey pegspk; uint256 prevaccounttxid;
     std::pair <int64_t,int64_t> prevaccount(0,0);
@@ -416,7 +416,7 @@ int32_t CheckPegsimport(CTransaction importTx,uint256 pegstxid, uint256 tokenid,
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "invalid destination or amount of coins issued with pegsget!" << std::endl);
         return(-1);
     }
-    else if (prevaccount.second+amount!=account.second || prevaccount.first!=account.first)
+    else if (prevaccount.second+amount!=account.second || prevaccount.first!=account.first || srcpub!=accountpk)
     { 
         fprintf(stderr,"%ld %ld %ld %ld %ld\n",prevaccount.second,amount,account.second,prevaccount.first,account.first);
         LOGSTREAM("pegscc", CCLOG_ERROR, stream << "invalid previous and current account comparisons!" << std::endl);
@@ -749,7 +749,7 @@ bool Eval::ImportCoin(const std::vector<uint8_t> params, const CTransaction &imp
     uint256 payoutsHash, bindtxid, burntxid, pegstxid, tokenid;
     std::vector<uint8_t> rawproof;
     std::vector<uint256> txids; 
-    CPubKey destpub,srcpub; std::pair <int64_t,int64_t> account(0,0);
+    CPubKey destpub,srcpub,accountpk; std::pair <int64_t,int64_t> account(0,0);
 
     LOGSTREAM("importcoin", CCLOG_DEBUG1, stream << "Validating import tx..., txid=" << importTx.GetHash().GetHex() << std::endl);
 
@@ -822,7 +822,7 @@ bool Eval::ImportCoin(const std::vector<uint8_t> params, const CTransaction &imp
         {
             if ( ASSETCHAINS_SELFIMPORT != "PEGSCC" )
                 return Invalid("PEGSCC-import-when-not PEGSCC");
-             else if ( UnmarshalBurnTx(burnTx,pegstxid,tokenid,srcpub,amount,account)==0 || CheckPegsimport(importTx,pegstxid,tokenid,srcpub,amount,account) < 0 )
+             else if ( UnmarshalBurnTx(burnTx,pegstxid,tokenid,srcpub,amount,account,accountpk)==0 || CheckPegsimport(importTx,pegstxid,tokenid,srcpub,amount,account,accountpk) < 0 )
                  return Invalid("PEGSCC-import-failure");
         }
         else if ( targetSymbol == "PUBKEY" )
