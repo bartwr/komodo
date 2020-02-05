@@ -508,7 +508,7 @@ std::string ValidateAccount(const CTransaction &tx, const uint256 &tokenid,const
             return ("invalid previous and current account comparisons!");
     else if (name=="exchange" && (prevaccount.first-PegsGetTokensAmountPerPrice(amount,tokenid)!=account.first || prevaccount.second-amount!=account.second))
             return ("invalid previous and current account comparisons!");
-    else if (name=="liquidate" && (prevaccount.first-amount!=account.first || account.first!=0 || account.second!=0))
+    else if (name=="liquidate" && (prevaccount.second-amount!=account.second || account.first!=0 || account.second!=0))
             return ("invalid previous and current account comparisons!");
     return ("");
 }
@@ -1231,7 +1231,7 @@ UniValue PegsLiquidate(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint25
                     account.first=0;
                     account.second=0;
                     LOGSTREAM("pegscc",CCLOG_DEBUG2, stream << "new account [deposit=" << account.first << ",debt=" << account.second << "]" << std::endl);
-                    return(FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodePegsAccountOpRet('L',tokenid,pegstxid,mypk,amount,account,accountpk)));
+                    return(FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodePegsAccountOpRet('L',tokenid,pegstxid,mypk,burnamount,account,accountpk)));
                 }
                 else CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not enough balance in pegs global CC address");
             }
