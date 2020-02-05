@@ -1207,12 +1207,12 @@ UniValue PegsLiquidate(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint25
     burnamount=account.second;
     tmpamount=PegsGetTokensAmountPerPrice(burnamount,tokenid)*105/100;
     amount=tmpamount+((tokenamount-tmpamount)*10/100);
-    if ((funds=AddNormalinputs(mtx,mypk,account.second,64))>=burnamount)
-    { 
-        if (liquidatetxid!=zeroid)
-        {
-            mtx.vin.push_back(CTxIn(liquidatetxid,0,CScript()));
-            mtx.vin.push_back(CTxIn(liquidatetxid,1,CScript()));
+    if (liquidatetxid!=zeroid)
+    {
+        mtx.vin.push_back(CTxIn(liquidatetxid,0,CScript()));
+        mtx.vin.push_back(CTxIn(liquidatetxid,1,CScript()));
+        if ((funds=AddNormalinputs(mtx,mypk,account.second,64))>=burnamount)
+        { 
             if ((pegsfunds=AddPegsInputs(cp,mtx,pegspk,CPubKey(),txfee,1))<txfee)
                 CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not enough balance in pegs global CC address");  
             pegsfunds+=2*CC_MARKER_VALUE;
@@ -1237,9 +1237,9 @@ UniValue PegsLiquidate(const CPubKey& pk,uint64_t txfee,uint256 pegstxid, uint25
             }
             else CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "tokens amount in pegs account " << tokenfunds << " not matching amount in account " << tokenamount); // this shouldn't happen
         }
-        else CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "cannot find account to liquidate" << liquidatetxid.GetHex());
+        else CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not enough funds to liquidate account, you must liquidate full debt ammount " << txfee+account.second << " instead of " << funds);
     }
-    else CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "not enough funds to liquidate account, you must liquidate full debt ammount " << txfee+account.second << " instead of " << funds);
+    else CCERR_RESULT("pegscc",CCLOG_ERROR, stream << "cannot find account to liquidate" << liquidatetxid.GetHex());
 }
 
 UniValue PegsAccountHistory(const CPubKey& pk,uint256 pegstxid)
