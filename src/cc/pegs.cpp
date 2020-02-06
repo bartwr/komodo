@@ -686,8 +686,8 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
             }
             retval = PreventCC(eval,tx,preventCCvins,numvins,preventCCvouts,numvouts);
             if ( retval != 0 )
-                fprintf(stderr,"Pegsget validated\n");
-            else fprintf(stderr,"Pegsget invalid\n");
+                fprintf(stderr,"Pegs tx validated\n");
+            else fprintf(stderr,"Pegs tx invalid\n");
             return(retval);
         // }
     }
