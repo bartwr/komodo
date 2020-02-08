@@ -594,7 +594,9 @@ bool GatewaysValidate(struct CCcontract_info *cp,Eval *eval,const CTransaction &
                         else if (myGetTransaction(deposittxid,tmptx,hashblock) == 0)
                             return eval->Invalid("invalid gatewaysdeposittxid!");
                         else if ((numvouts=tmptx.vout.size()) < 1 || DecodeGatewaysDepositOpRet(tmptx.vout[numvouts-1].scriptPubKey,tmptxid,tmprefcoin,tmppublishers,txids,height,cointxid,claimvout,hex,proof,tmppubkey,tmpamount) != 'D')
-                            return eval->Invalid("invalid gatewaysdeposit OP_RETURN data!"); 
+                            return eval->Invalid("invalid gatewaysdeposit OP_RETURN data!");
+                        else if ( CCCointxidExists("gatewayscc-1",cointxid) != 0 )
+                            return eval->Invalid("cointxid already processed with gatewaysdeposit!");    
                         else if ( IsCCInput(tmptx.vin[0].scriptSig) != 0 )
                             return eval->Invalid("vin.0 is normal for gatewaysdeposit!");
                         else if ( GetCCaddress(cp,destaddr,tmppubkey)==0 || ConstrainVout(tmptx.vout[0],1,destaddr,CC_MARKER_VALUE)==0)
@@ -950,7 +952,7 @@ UniValue GatewaysDeposit(const CPubKey& pk, uint64_t txfee,uint256 bindtxid,int3
     if ( merkleroot == zeroid || m < n/2 )
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "couldnt find merkleroot for ht." << height << " " << coin << " oracle." << oracletxid.GetHex() << " m." << m << " vs n." << n);
     if ( CCCointxidExists("gatewayscc-1",cointxid) != 0 )
-        CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "cointxid." << cointxid.GetHex() << " already exists");
+        CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "cointxid." << cointxid.GetHex() << " already processed with gatewaysdeposit");
     if ( GatewaysVerify(depositaddr,oracletxid,claimvout,coin,cointxid,deposithex,proof,merkleroot,destpub,taddr,prefix,prefix2) != amount )
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "deposittxid didnt validate");
     if ( AddNormalinputs(mtx,mypk,txfee+2*CC_MARKER_VALUE,3,pk.IsValid()) >= txfee+2*CC_MARKER_VALUE )
