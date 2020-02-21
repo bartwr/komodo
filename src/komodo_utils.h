@@ -12,6 +12,9 @@
  * Removal or modification of this copyright notice is prohibited.            *
  *                                                                            *
  ******************************************************************************/
+#ifndef __KOMODO_UTIL_H__
+#define __KOMODO_UTIL_H__
+
 #include "komodo_defs.h"
 #include "key_io.h"
 #include "cc/CCinclude.h"
@@ -22,6 +25,8 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/thread.hpp>
 #endif
+
+#include "cc/pricesfeed.h"
 
 #define SATOSHIDEN ((uint64_t)100000000L)
 #define dstr(x) ((double)(x) / SATOSHIDEN)
@@ -1363,8 +1368,9 @@ void komodo_statefname(char *fname,char *symbol,char *str)
     if ( (n= (int32_t)strlen(ASSETCHAINS_SYMBOL)) != 0 )
     {
         len = (int32_t)strlen(fname);
-        if ( strcmp(ASSETCHAINS_SYMBOL,&fname[len - n]) == 0 )
+        if ( !mapArgs.count("-datadir") && strcmp(ASSETCHAINS_SYMBOL,&fname[len - n]) == 0 )
             fname[len - n] = 0;
+        else if(mapArgs.count("-datadir")) printf("DEBUG - komodo_utils:1363: custom datadir\n");
         else
         {
             if ( strcmp(symbol,"REGTEST") != 0 )
@@ -1382,7 +1388,7 @@ void komodo_statefname(char *fname,char *symbol,char *str)
     }
     if ( symbol != 0 && symbol[0] != 0 && strcmp("KMD",symbol) != 0 )
     {
-        strcat(fname,symbol);
+        if(!mapArgs.count("-datadir")) strcat(fname,symbol);
         //printf("statefname.(%s) -> (%s)\n",symbol,fname);
 #ifdef _WIN32
         strcat(fname,"\\");
@@ -1421,6 +1427,7 @@ void komodo_configfile(char *symbol,uint16_t rpcport)
 #else
         sprintf(fname,"%s/%s",GetDataDir(false).string().c_str(),buf);
 #endif
+        if(mapArgs.count("-conf")) sprintf(fname, "%s", GetConfigFile().string().c_str());
         if ( (fp= fopen(fname,"rb")) == 0 )
         {
 #ifndef FROM_CLI
@@ -1477,8 +1484,11 @@ uint16_t komodo_userpass(char *userpass,char *symbol)
         sprintf(confname,"komodo.conf");
 #endif
     }
-    else sprintf(confname,"%s.conf",symbol);
-    komodo_statefname(fname,symbol,confname);
+    else if(!mapArgs.count("-conf")) {
+        sprintf(confname,"%s.conf",symbol);
+        komodo_statefname(fname,symbol,confname);
+    } else sprintf(fname,"%s",GetDataDir().string().c_str());
+    
     if ( (fp= fopen(fname,"rb")) != 0 )
     {
         port = _komodo_userpass(username,password,fp);
@@ -1711,6 +1721,7 @@ void komodo_args(char *argv0)
     NOTARY_PUBKEY = GetArg("-pubkey", "");
     KOMODO_DEALERNODE = GetArg("-dealer",0);
     KOMODO_TESTNODE = GetArg("-testnode",0);
+    ASSETCHAINS_STAKED_SPLIT_PERCENTAGE = GetArg("-splitperc",0);
     if ( strlen(NOTARY_PUBKEY.c_str()) == 66 )
     {
         decode_hex(NOTARY_PUBKEY33,33,(char *)NOTARY_PUBKEY.c_str());
@@ -1871,6 +1882,7 @@ void komodo_args(char *argv0)
         }
         fprintf(stderr,"ASSETCHAINS_SUPPLY %llu\n",(long long)ASSETCHAINS_SUPPLY);
         
+        KOMODO_DEX_P2P = GetArg("-dexp2p",0); // 1 normal node, 2 full node
         ASSETCHAINS_COMMISSION = GetArg("-ac_perc",0);
         ASSETCHAINS_OVERRIDE_PUBKEY = GetArg("-ac_pubkey","");
         ASSETCHAINS_SCRIPTPUB = GetArg("-ac_script","");
@@ -1883,18 +1895,67 @@ void komodo_args(char *argv0)
         //fprintf(stderr,"ASSETCHAINS_CBOPRET.%llx\n",(long long)ASSETCHAINS_CBOPRET);
         if ( ASSETCHAINS_CBOPRET != 0 )
         {
-            SplitStr(GetArg("-ac_prices",""),  ASSETCHAINS_PRICES);
-            if ( ASSETCHAINS_PRICES.size() > 0 )
+            std::vector<std::string> ac_forex = { "BGN", "NZD", "ILS", "RUB", "CAD", "PHP", "CHF", "AUD", "JPY", "TRY", "HKD", "MYR", "HRK", "CZK", "IDR", "DKK", "NOK", "HUF", "GBP", "MXN", "THB", "ISK", "ZAR", "BRL", "SGD", "PLN", "INR", "KRW", "RON", "CNY", "SEK", "EUR" };
+            std::vector<std::string> ac_prices;
+            std::vector<std::string> ac_stocks;
+
+            SplitStr(GetArg("-ac_prices", ""), ac_prices);
+            if (ac_prices.size() > 0)
                 ASSETCHAINS_CBOPRET |= 4;
-            SplitStr(GetArg("-ac_stocks",""),  ASSETCHAINS_STOCKS);
-            if ( ASSETCHAINS_STOCKS.size() > 0 )
+            SplitStr(GetArg("-ac_stocks", ""), ac_stocks);
+            if (ac_stocks.size() > 0)
                 ASSETCHAINS_CBOPRET |= 8;
-            for (i=0; i<ASSETCHAINS_PRICES.size(); i++)
-                fprintf(stderr,"%s ",ASSETCHAINS_PRICES[i].c_str());
-            fprintf(stderr,"%d -ac_prices\n",(int32_t)ASSETCHAINS_PRICES.size());
-            for (i=0; i<ASSETCHAINS_STOCKS.size(); i++)
-                fprintf(stderr,"%s ",ASSETCHAINS_STOCKS[i].c_str());
-            fprintf(stderr,"%d -ac_stocks\n",(int32_t)ASSETCHAINS_STOCKS.size());
+            for (i = 0; i < ac_prices.size(); i ++)
+                fprintf(stderr, "%s ", ac_prices[i].c_str());
+            fprintf(stderr, "%d -ac_prices\n", (int32_t)ac_prices.size());
+            for (i = 0; i < ac_stocks.size(); i ++)
+                fprintf(stderr, "%s ", ac_stocks[i].c_str());
+            fprintf(stderr, "%d -ac_stocks\n", (int32_t)ac_stocks.size());
+
+            // parsing -ac_feeds config
+            std::string sfeedcfg = GetArg("-ac_feeds", "");
+            if (!sfeedcfg.empty())
+            {
+                bool parsed = false;
+                cJSON *jfeedcfg = cJSON_Parse(sfeedcfg.c_str());
+                if (jfeedcfg) {
+                    parsed = PricesFeedParseConfig(jfeedcfg);
+                    cJSON_Delete(jfeedcfg);
+                }
+                else
+                {
+                    LOGSTREAM("prices", CCLOG_ERROR, stream << "could not parse json from -ac_feeds" << std::endl);
+                }
+
+                if (!parsed) {
+                    std::cerr << "ERROR: could not parse -ac_feeds config (check debug.log), shutdown\n";
+                    StartShutdown();
+                }
+            }
+
+            // checking blocktime
+            if (ASSETCHAINS_BLOCKTIME < PF_DEFAULTINTERVAL + 60) {
+                LOGSTREAM("prices", CCLOG_ERROR, stream << "blocktime too low for prices to work normally" << std::endl);
+                std::cerr << "ERROR: blocktime too low for prices to work normally, restart the node with blocktime >= 180\n";
+                // StartShutdown();
+            }
+
+            // add old-style prices config
+            if (ASSETCHAINS_CBOPRET & 2)
+                PricesAddOldForexConfig(ac_forex);
+            if (ac_prices.size() > 0)
+                PricesAddOldPricesConfig(ac_prices);
+            if (ac_stocks.size() > 0)
+                PricesAddOldStocksConfig(ac_stocks);
+
+            // init poll buffers
+            if (!PricesInitStatuses())
+            {
+                std::cerr << "error prices initializing (check debug.log), shutdown\n";
+                StartShutdown();
+            }
+
+            fprintf(stderr, "%d -ac_feeds\n", PricesFeedSymbolsCount());  // print size with default prices
         }
         hexstr = GetArg("-ac_mineropret","");
         if ( hexstr.size() != 0 )
@@ -1988,9 +2049,9 @@ void komodo_args(char *argv0)
             }
         }
         // else it can be gateway coin
-        else if (!ASSETCHAINS_SELFIMPORT.empty() && (ASSETCHAINS_ENDSUBSIDY[0]!=1 || ASSETCHAINS_SUPPLY>0 || ASSETCHAINS_COMMISSION!=0))
+        else if (!ASSETCHAINS_SELFIMPORT.empty() && (ASSETCHAINS_ENDSUBSIDY[0]!=1 || ASSETCHAINS_COMMISSION!=0))
         {
-            fprintf(stderr,"when using gateway import these must be set: -ac_end=1 -ac_supply=0 -ac_perc=0\n");
+            fprintf(stderr,"when using gateway import these must be set: -ac_end=1 -ac_perc=0\n");
             StartShutdown();
         }
         
@@ -2176,27 +2237,21 @@ fprintf(stderr,"extralen.%d before disable bits\n",extralen);
             if ( ASSETCHAINS_CBOPRET != 0 )
             {
                 extralen += iguana_rwnum(1,&extraptr[extralen],sizeof(ASSETCHAINS_CBOPRET),(void *)&ASSETCHAINS_CBOPRET);
-                if ( ASSETCHAINS_PRICES.size() != 0 )
-                {
-                    for (i=0; i<ASSETCHAINS_PRICES.size(); i++)
-                    {
-                        symbol = ASSETCHAINS_PRICES[i];
-                        memcpy(&extraptr[extralen],(char *)symbol.c_str(),symbol.size());
-                        extralen += symbol.size();
-                    }
+                if (PricesFeedSymbolsCount() > 0) {
+                    // add price names params for magic calc:
+                    std::string feednames;
+
+                    // if 7 or 15 provide magic compatibility with old prices which includes only -ac_prices and -ac_stocks into magic:
+                    bool oldPricesCompatible = ASSETCHAINS_CBOPRET == 7 || ASSETCHAINS_CBOPRET == 15 ? true : false;
+                    PricesFeedSymbolsForMagic(feednames, oldPricesCompatible);
+                    assert(extralen + feednames.length() < sizeof(extrabuf) / sizeof(extrabuf[0]));
+                    memcpy(&extraptr[extralen], feednames.c_str(), feednames.length());
+                    extralen += feednames.length();
                 }
-                if ( ASSETCHAINS_STOCKS.size() != 0 )
-                {
-                    for (i=0; i<ASSETCHAINS_STOCKS.size(); i++)
-                    {
-                        symbol = ASSETCHAINS_STOCKS[i];
-                        memcpy(&extraptr[extralen],(char *)symbol.c_str(),symbol.size());
-                        extralen += symbol.size();
-                    }
-                }
+
                 //komodo_pricesinit();
                 komodo_cbopretupdate(1); // will set Mineropret
-                fprintf(stderr,"This blockchain uses data produced from CoinDesk Bitcoin Price Index\n");
+                fprintf(stderr,"This blockchain uses data produced from CoinDesk Bitcoin Price Index\n");  // print CoinDesk disclaimer
             }
             if ( ASSETCHAINS_NK[0] != 0 && ASSETCHAINS_NK[1] != 0 )
             {
@@ -2487,3 +2542,5 @@ void komodo_prefetch(FILE *fp)
     }
     fseek(fp,fpos,SEEK_SET);
 }
+
+#endif // #ifndef __KOMODO_UTIL_H__

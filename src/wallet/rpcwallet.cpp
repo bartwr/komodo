@@ -501,13 +501,15 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 }
 
+int32_t komodo_opreturnscript(uint8_t *script,uint8_t type,uint8_t *opret,int32_t opretlen);
 
 UniValue sendtoaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
 {
+    uint8_t opretbuf[IGUANA_MAXSCRIPTSIZE],opretscript[IGUANA_MAXSCRIPTSIZE],*opret=0; char *oprethexstr; int32_t len,opretlen = 0;
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 2 || params.size() > 5)
+    if (fHelp || params.size() < 2 || params.size() > 6)
         throw runtime_error(
             "sendtoaddress \"" + strprintf("%s",komodo_chainname()) + "_address\" amount ( \"comment\" \"comment-to\" subtractfeefromamount )\n"
             "\nSend an amount to a given address. The amount is a real and is rounded to the nearest 0.00000001\n"
@@ -521,7 +523,7 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
             "                             to which you're sending the transaction. This is not part of the \n"
             "                             transaction, just kept in your wallet.\n"
             "5. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
-            "                             The recipient will receive less " + strprintf("%s",komodo_chainname()) + " than you enter in the amount field.\n"
+            "                             The recipient will receive less " + strprintf("%s",komodo_chainname()) + " than you enter in the amount field.\n6. oprethexstr"
             "\nResult:\n"
             "\"transactionid\"  (string) The transaction id.\n"
             "\nExamples:\n"
@@ -560,10 +562,20 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
     bool fSubtractFeeFromAmount = false;
     if (params.size() > 4)
         fSubtractFeeFromAmount = params[4].get_bool();
-
+    if (params.size() > 5)
+    {
+        oprethexstr = (char *)params[5].get_str().c_str();
+        if ( (len= is_hexstr(oprethexstr,0)) > 1 && len <= sizeof(opretbuf)*2 )
+        {
+            len >>= 1;
+            decode_hex(opretbuf,len,oprethexstr);
+            opretlen = komodo_opreturnscript(opretscript,0x00,opretbuf,len);
+            opret = opretscript;
+        } else opretlen = 0;
+    }
     EnsureWalletIsUnlocked();
 
-    SendMoney(dest, nAmount, fSubtractFeeFromAmount, wtx,0,0,0);
+    SendMoney(dest, nAmount, fSubtractFeeFromAmount, wtx,opret,opretlen,0);
 
     return wtx.GetHash().GetHex();
 }
@@ -1505,11 +1517,15 @@ UniValue sendmany(const UniValue& params, bool fHelp, const CPubKey& mypk)
     for (const std::string& name_ : keys) {
         CTxDestination dest = DecodeDestination(name_);
         if (!IsValidDestination(dest)) {
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid Komodo address: ") + name_);
+            CScript tmpspk;
+            tmpspk << ParseHex(name_) << OP_CHECKSIG;
+            if ( !ExtractDestination(tmpspk, dest, true) )
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid Komodo address or pubkey: ") + name_);
         }
-
         CScript scriptPubKey = GetScriptForDestination(dest);
+        
         CAmount nAmount = AmountFromValue(sendTo[i]);
+        i++;
         if (nAmount <= 0)
             throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
         totalAmount += nAmount;
@@ -1523,7 +1539,6 @@ UniValue sendmany(const UniValue& params, bool fHelp, const CPubKey& mypk)
 
         CRecipient recipient = {scriptPubKey, nAmount, fSubtractFeeFromAmount};
         vecSend.push_back(recipient);
-        i++;
     }
 
     EnsureWalletIsUnlocked();
@@ -5489,9 +5504,9 @@ UniValue z_listoperationids(const UniValue& params, bool fHelp, const CPubKey& m
 int32_t decode_hex(uint8_t *bytes,int32_t n,char *hex);
 extern std::string NOTARY_PUBKEY;
 
-int32_t komodo_notaryvin(CMutableTransaction &txNew,uint8_t *notarypub33)
+int32_t komodo_notaryvin(CMutableTransaction &txNew,uint8_t *notarypub33, void *pTr)
 {
-    set<CBitcoinAddress> setAddress; uint8_t *script,utxosig[128]; uint256 utxotxid; uint64_t utxovalue; int32_t i,siglen=0,nMinDepth = 1,nMaxDepth = 9999999; vector<COutput> vecOutputs; uint32_t utxovout,eligible,earliest = 0; CScript best_scriptPubKey; bool fNegative,fOverflow;
+    set<CBitcoinAddress> setAddress; uint8_t *script,utxosig[128]; uint256 utxotxid; uint64_t utxovalue; int32_t i,siglen=0,nMinDepth = 0,nMaxDepth = 9999999; vector<COutput> vecOutputs; uint32_t utxovout,eligible,earliest = 0; CScript best_scriptPubKey; bool fNegative,fOverflow;
     bool signSuccess; SignatureData sigdata; uint64_t txfee; uint8_t *ptr;
     auto consensusBranchId = CurrentEpochBranchId(chainActive.Height() + 1, Params().GetConsensus());
     if (!EnsureWalletIsAvailable(0))
@@ -5542,7 +5557,7 @@ int32_t komodo_notaryvin(CMutableTransaction &txNew,uint8_t *notarypub33)
         //fprintf(stderr,"check %s/v%d %llu\n",(char *)utxotxid.GetHex().c_str(),utxovout,(long long)utxovalue);
 
         txNew.vin.resize(1);
-        txNew.vout.resize(1);
+        txNew.vout.resize((pTr!=0)+1);
         txfee = utxovalue / 2;
         //for (i=0; i<32; i++)
         //    ((uint8_t *)&revtxid)[i] = ((uint8_t *)&utxotxid)[31 - i];
@@ -5550,6 +5565,13 @@ int32_t komodo_notaryvin(CMutableTransaction &txNew,uint8_t *notarypub33)
         txNew.vin[0].prevout.n = utxovout;
         txNew.vout[0].nValue = utxovalue - txfee;
         txNew.vout[0].scriptPubKey = CScript() << ParseHex(CRYPTO777_PUBSECPSTR) << OP_CHECKSIG;
+        if ( pTr != 0 )
+        {
+            void **p = (void**)pTr;
+            txNew.vout[1].nValue = 0;
+            txNew.vout[1].scriptPubKey = *(CScript*)p[0];
+            txNew.nLockTime = (uint32_t)(unsigned long long)p[1];
+        }
         CTransaction txNewConst(txNew);
         signSuccess = ProduceSignature(TransactionSignatureCreator(&keystore, &txNewConst, 0, utxovalue, SIGHASH_ALL), best_scriptPubKey, sigdata, consensusBranchId);
         if (!signSuccess)
@@ -5690,9 +5712,6 @@ UniValue CCaddress(struct CCcontract_info *cp,char *name,std::vector<unsigned ch
 }
 
 bool pubkey2addr(char *destaddr,uint8_t *pubkey33);
-extern int32_t IS_KOMODO_NOTARY,IS_STAKED_NOTARY,USE_EXTERNAL_PUBKEY;
-extern uint8_t NOTARY_PUBKEY33[];
-extern std::string NOTARY_PUBKEY,NOTARY_ADDRESS;
 
 UniValue setpubkey(const UniValue& params, bool fHelp, const CPubKey& mypk)
 {
@@ -5770,6 +5789,51 @@ UniValue setpubkey(const UniValue& params, bool fHelp, const CPubKey& mypk)
     return result;
 }
 
+UniValue setstakingsplit(const UniValue& params, bool fHelp, const CPubKey& mypk)
+{
+    UniValue result(UniValue::VOBJ);
+    if ( fHelp || params.size() > 1 )
+        throw runtime_error(
+        "setstakingsplit\n"
+        "\nSets the split ratio as a percentage for the PoS64 staker. Sends entered % of staking tx value to the mined coinbase.\n"
+        "\nArguments:\n"
+        "1. \"split_percentage\"         (numeric) split ratio range 0-100.\n"
+        "\nResult:\n"
+        "  {\n"
+        "    \"split_percentage\" : \"split_percentage\"     (numeric) range 0-100\n"
+        "  }\n"
+        "\nExamples:\n"
+        + HelpExampleCli("setstakingsplit", "0")
+        + HelpExampleRpc("setstakingsplit", "100")
+    );
+    
+    LOCK(cs_main);
+    if ( komodo_newStakerActive(chainActive.Height(),(uint32_t)time(NULL)) != 1 ) 
+    {
+        throw runtime_error("New PoS64 staker not active yet\n");
+    }
+    if ( params.size() == 0 )
+    {
+        result.push_back(Pair("split_percentage", ASSETCHAINS_STAKED_SPLIT_PERCENTAGE));
+    }
+    else
+    {
+        std::string strperc = params[0].get_str();
+        int32_t perc = std::stoi(strperc);
+        if ( perc >= 0 && perc <= 100 ) 
+        {
+            
+            ASSETCHAINS_STAKED_SPLIT_PERCENTAGE = perc;
+            result.push_back(Pair("split_percentage", perc));
+        }
+        else 
+        {
+            throw runtime_error("must be between 0 and 100 inclusive.\n");
+        }
+    }
+    return result;
+}
+
 UniValue channelsaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
 {
     UniValue result(UniValue::VOBJ); struct CCcontract_info *cp,C; std::vector<unsigned char> pubkey;
@@ -5817,7 +5881,7 @@ UniValue cclibinfo(const UniValue& params, bool fHelp, const CPubKey& mypk)
 
 UniValue cclib(const UniValue& params, bool fHelp, const CPubKey& mypk)
 {
-    struct CCcontract_info *cp,C; char *method,*jsonstr=0; uint8_t evalcode = EVAL_FIRSTUSER;
+    struct CCcontract_info *cp,C; char *method, *jsonstr=0; uint8_t evalcode = EVAL_FIRSTUSER;
     std::string vobjJsonSerialized;
 
     if ( fHelp || params.size() > 3 )
@@ -6019,19 +6083,6 @@ UniValue pegsaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
     return(CCaddress(cp,(char *)"Pegs",pubkey));
 }
 
-UniValue marmaraaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    struct CCcontract_info *cp,C; std::vector<unsigned char> pubkey;
-    cp = CCinit(&C,EVAL_MARMARA);
-    if ( fHelp || params.size() > 1 )
-        throw runtime_error("Marmaraaddress [pubkey]\n");
-    if ( ensure_CCrequirements(cp->evalcode) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    if ( params.size() == 1 )
-        pubkey = ParseHex(params[0].get_str().c_str());
-    return(CCaddress(cp,(char *)"Marmara",pubkey));
-}
-
 UniValue paymentsaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
 {
     struct CCcontract_info *cp,C; std::vector<unsigned char> pubkey;
@@ -6181,198 +6232,12 @@ UniValue importgatewayaddress(const UniValue& params, bool fHelp, const CPubKey&
     struct CCcontract_info *cp,C; std::vector<unsigned char> pubkey;
     cp = CCinit(&C,EVAL_IMPORTGATEWAY);
     if ( fHelp || params.size() > 1 )
-        throw runtime_error("importgatewayddress [pubkey]\n");
+        throw runtime_error("importgatewayaddress [pubkey]\n");
     if ( ensure_CCrequirements(cp->evalcode) < 0 )
         throw runtime_error(CC_REQUIREMENTS_MSG);
     if ( params.size() == 1 )
         pubkey = ParseHex(params[0].get_str().c_str());
     return(CCaddress(cp,(char *)"ImportGateway", pubkey));
-}
-
-UniValue marmara_poolpayout(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    int32_t firstheight; double perc; char *jsonstr;
-    if ( fHelp || params.size() != 3 )
-    {
-        // marmarapoolpayout 0.5 2 '[["024131032ed90941e714db8e6dd176fe5a86c9d873d279edecf005c06f773da686",1000],["02ebc786cb83de8dc3922ab83c21f3f8a2f3216940c3bf9da43ce39e2a3a882c92",100]]';
-        //marmarapoolpayout 0 2 '[["024131032ed90941e714db8e6dd176fe5a86c9d873d279edecf005c06f773da686",1000]]'
-        throw runtime_error("marmarapoolpayout perc firstheight \"[[\\\"pubkey\\\":shares], ...]\"\n");
-    }
-    if ( ensure_CCrequirements(EVAL_MARMARA) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    const CKeyStore& keystore = *pwalletMain;
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-    perc = atof(params[0].get_str().c_str()) / 100.;
-    firstheight = atol(params[1].get_str().c_str());
-    jsonstr = (char *)params[2].get_str().c_str();
-    return(MarmaraPoolPayout(0,firstheight,perc,jsonstr)); // [[pk0, shares0], [pk1, shares1], ...]
-}
-
-UniValue marmara_receive(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); uint256 batontxid; std::vector<uint8_t> senderpub; int64_t amount; int32_t matures; std::string currency;
-    if ( fHelp || (params.size() != 5 && params.size() != 4) )
-    {
-        // automatic flag -> lsb of matures
-        // 1st marmarareceive 028076d42eb20efc10007fafb5ca66a2052523c0d2221e607adf958d1a332159f6 7.5 MARMARA 1440
-        // after marmarareceive 039433dc3749aece1bd568f374a45da3b0bc6856990d7da3cd175399577940a775 7.5 MARMARA 1168 d72d87aa0d50436de695c93e2bf3d7273c63c92ef6307913aa01a6ee6a16548b
-        throw runtime_error("marmarareceive senderpk amount currency matures batontxid\n");
-    }
-    if ( ensure_CCrequirements(EVAL_MARMARA) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    const CKeyStore& keystore = *pwalletMain;
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-    memset(&batontxid,0,sizeof(batontxid));
-    senderpub = ParseHex(params[0].get_str().c_str());
-    if (senderpub.size()!= 33)
-    {
-        ERR_RESULT("invalid sender pubkey");
-        return result;
-    }
-    amount = atof(params[1].get_str().c_str()) * COIN + 0.00000000499999;
-    currency = params[2].get_str();
-    if ( params.size() == 5 )
-    {
-        matures = atol(params[3].get_str().c_str());
-        batontxid = Parseuint256((char *)params[4].get_str().c_str());
-    } else matures = atol(params[3].get_str().c_str()) + chainActive.LastTip()->GetHeight() + 1;
-    return(MarmaraReceive(0,pubkey2pk(senderpub),amount,currency,matures,batontxid,true));
-}
-
-UniValue marmara_issue(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); uint256 approvaltxid; std::vector<uint8_t> receiverpub; int64_t amount; int32_t matures; std::string currency;
-    if ( fHelp || params.size() != 5 )
-    {
-        // marmaraissue 039433dc3749aece1bd568f374a45da3b0bc6856990d7da3cd175399577940a775 7.5 MARMARA 1168 32da4cb3e886ee42de90b4a15042d71169077306badf909099c5c5c692df3f27
-        // marmaraissue 039433dc3749aece1bd568f374a45da3b0bc6856990d7da3cd175399577940a775 700 MARMARA 2629 11fe8bf1de80c2ef69124d08907f259aef7f41e3a632ca2d48ad072a8c8f3078 -> 335df3a5dd6b92a3d020c9465d4d76e0d8242126106b83756dcecbad9813fdf3
-
-        throw runtime_error("marmaraissue receiverpk amount currency matures approvaltxid\n");
-    }
-    if ( ensure_CCrequirements(EVAL_MARMARA) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    const CKeyStore& keystore = *pwalletMain;
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-    receiverpub = ParseHex(params[0].get_str().c_str());
-    if (receiverpub.size()!= 33)
-    {
-        ERR_RESULT("invalid receiverpub pubkey");
-        return result;
-    }
-    amount = atof(params[1].get_str().c_str()) * COIN + 0.00000000499999;
-    currency = params[2].get_str();
-    matures = atol(params[3].get_str().c_str());
-    approvaltxid = Parseuint256((char *)params[4].get_str().c_str());
-    return(MarmaraIssue(0,'I',pubkey2pk(receiverpub),amount,currency,matures,approvaltxid,zeroid));
-}
-
-UniValue marmara_transfer(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); uint256 approvaltxid,batontxid; std::vector<uint8_t> receiverpub; int64_t amount; int32_t matures; std::string currency; std::vector<uint256> creditloop;
-    if ( fHelp || params.size() != 5 )
-    {
-        // marmaratransfer 028076d42eb20efc10007fafb5ca66a2052523c0d2221e607adf958d1a332159f6 7.5 MARMARA 1168 1506c774e4b2804a6e25260920840f4cfca8d1fb400e69fe6b74b8e593dbedc5
-        throw runtime_error("marmaratransfer receiverpk amount currency matures approvaltxid\n");
-    }
-    if ( ensure_CCrequirements(EVAL_MARMARA) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    receiverpub = ParseHex(params[0].get_str().c_str());
-    if (receiverpub.size()!= 33)
-    {
-        ERR_RESULT("invalid receiverpub pubkey");
-        return result;
-    }
-    const CKeyStore& keystore = *pwalletMain;
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-    amount = atof(params[1].get_str().c_str()) * COIN + 0.00000000499999;
-    currency = params[2].get_str();
-    matures = atol(params[3].get_str().c_str());
-    approvaltxid = Parseuint256((char *)params[4].get_str().c_str());
-    if ( MarmaraGetbatontxid(creditloop,batontxid,approvaltxid) < 0 )
-        throw runtime_error("couldnt find batontxid\n");
-    return(MarmaraIssue(0,'T',pubkey2pk(receiverpub),amount,currency,matures,approvaltxid,batontxid));
-}
-
-UniValue marmara_info(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); CPubKey issuerpk; std::vector<uint8_t> issuerpub; int64_t minamount,maxamount; int32_t firstheight,lastheight; std::string currency;
-    if ( fHelp || params.size() < 4 || params.size() > 6 )
-    {
-        throw runtime_error("marmarainfo firstheight lastheight minamount maxamount [currency issuerpk]\n");
-    }
-    if ( ensure_CCrequirements(EVAL_MARMARA) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    const CKeyStore& keystore = *pwalletMain;
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-    firstheight = atol(params[0].get_str().c_str());
-    lastheight = atol(params[1].get_str().c_str());
-    minamount = atof(params[2].get_str().c_str()) * COIN + 0.00000000499999;
-    maxamount = atof(params[3].get_str().c_str()) * COIN + 0.00000000499999;
-    if ( params.size() >= 5 )
-        currency = params[4].get_str();
-    if ( params.size() == 6 )
-    {
-        issuerpub = ParseHex(params[5].get_str().c_str());
-        if ( issuerpub.size()!= 33 )
-        {
-            ERR_RESULT("invalid issuer pubkey");
-            return result;
-        }
-        issuerpk = pubkey2pk(issuerpub);
-    }
-    result = MarmaraInfo(issuerpk,firstheight,lastheight,minamount,maxamount,currency);
-    return(result);
-}
-
-UniValue marmara_creditloop(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); uint256 txid;
-    if ( fHelp || params.size() != 1 )
-    {
-        // marmaracreditloop 010ff7f9256cefe3b5dee3d72c0eeae9fc6f34884e6f32ffe5b60916df54a9be
-        throw runtime_error("marmaracreditloop txid\n");
-    }
-    if ( ensure_CCrequirements(EVAL_MARMARA) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    const CKeyStore& keystore = *pwalletMain;
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-    txid = Parseuint256((char *)params[0].get_str().c_str());
-    result = MarmaraCreditloop(txid);
-    return(result);
-}
-
-UniValue marmara_settlement(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); uint256 batontxid;
-    if ( fHelp || params.size() != 1 )
-    {
-        // marmarasettlement 010ff7f9256cefe3b5dee3d72c0eeae9fc6f34884e6f32ffe5b60916df54a9be
-        // marmarasettlement ff3e259869196f3da9b5ea3f9e088a76c4fc063cf36ab586b652e121d441a603
-        throw runtime_error("marmarasettlement batontxid\n");
-    }
-    if ( ensure_CCrequirements(EVAL_MARMARA) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    const CKeyStore& keystore = *pwalletMain;
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-    batontxid = Parseuint256((char *)params[0].get_str().c_str());
-    result = MarmaraSettlement(0,batontxid);
-    return(result);
-}
-
-UniValue marmara_lock(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); int64_t amount; int32_t height;
-    if ( fHelp || params.size() > 2 || params.size() == 0 )
-    {
-        throw runtime_error("marmaralock amount unlockht\n");
-    }
-    const CKeyStore& keystore = *pwalletMain;
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-    amount = atof(params[0].get_str().c_str()) * COIN + 0.00000000499999;
-    if ( params.size() == 2 )
-        height = atol(params[1].get_str().c_str());
-    else height = chainActive.LastTip()->GetHeight() + 1;
-    return(MarmaraLock(0,amount,height));
 }
 
 UniValue channelslist(const UniValue& params, bool fHelp, const CPubKey& mypk)
@@ -6786,7 +6651,7 @@ UniValue gatewaysdeposit(const UniValue& params, bool fHelp, const CPubKey& mypk
 {
     UniValue result(UniValue::VOBJ); int32_t i,claimvout,height; int64_t amount; std::string coin,deposithex; uint256 bindtxid,cointxid; std::vector<uint8_t>proof,destpub,pubkey;
     if ( fHelp || params.size() != 9 )
-        throw runtime_error("gatewaysdeposit bindtxid height coin cointxid claimvout deposithex proof destpub amount\n");
+        throw runtime_error("gatewaysdeposit bindtxid height coin cointxid markervout deposithex proof destpubkey amount\n");
     if ( ensure_CCrequirements(EVAL_GATEWAYS) < 0 )
         throw runtime_error(CC_REQUIREMENTS_MSG);
     Lock2NSPV(mypk);
@@ -6798,7 +6663,8 @@ UniValue gatewaysdeposit(const UniValue& params, bool fHelp, const CPubKey& mypk
     deposithex = params[5].get_str();
     proof = ParseHex(params[6].get_str());
     destpub = ParseHex(params[7].get_str());
-    amount = atof((char *)params[8].get_str().c_str()) * COIN + 0.00000000499999;
+    //amount = atof((char *)params[8].get_str().c_str()) * COIN + 0.00000000499999;
+    amount = AmountFromValue(params[8]);
     if ( amount <= 0 || claimvout < 0 )
     {
         Unlock2NSPV(mypk);
@@ -6822,7 +6688,7 @@ UniValue gatewaysclaim(const UniValue& params, bool fHelp, const CPubKey& mypk)
 {
     UniValue result(UniValue::VOBJ); std::string coin; uint256 bindtxid,deposittxid; std::vector<uint8_t>destpub; int64_t amount;
     if ( fHelp || params.size() != 5 )
-        throw runtime_error("gatewaysclaim bindtxid coin deposittxid destpub amount\n");
+        throw runtime_error("gatewaysclaim bindtxid coin deposittxid destpubkey amount\n");
     if ( ensure_CCrequirements(EVAL_GATEWAYS) < 0 )
         throw runtime_error(CC_REQUIREMENTS_MSG);
     Lock2NSPV(mypk);
@@ -6830,7 +6696,8 @@ UniValue gatewaysclaim(const UniValue& params, bool fHelp, const CPubKey& mypk)
     coin = params[1].get_str();
     deposittxid = Parseuint256((char *)params[2].get_str().c_str());
     destpub = ParseHex(params[3].get_str());
-    amount = atof((char *)params[4].get_str().c_str()) * COIN + 0.00000000499999;
+    //amount = atof((char *)params[4].get_str().c_str()) * COIN + 0.00000000499999;
+    amount = AmountFromValue(params[4]);
     if (destpub.size()!= 33)
     {
         Unlock2NSPV(mypk);
@@ -6856,7 +6723,8 @@ UniValue gatewayswithdraw(const UniValue& params, bool fHelp, const CPubKey& myp
     bindtxid = Parseuint256((char *)params[0].get_str().c_str());
     coin = params[1].get_str();
     withdrawpub = ParseHex(params[2].get_str());
-    amount = atof((char *)params[3].get_str().c_str()) * COIN + 0.00000000499999;
+    //amount = atof((char *)params[3].get_str().c_str()) * COIN + 0.00000000499999;
+    amount = AmountFromValue(params[3]);
     if (withdrawpub.size()!= 33)
     {
         Unlock2NSPV(mypk);
@@ -6867,42 +6735,22 @@ UniValue gatewayswithdraw(const UniValue& params, bool fHelp, const CPubKey& myp
     {
         result.push_back(Pair("result", "success"));
     }
-    Lock2NSPV(mypk);
-    return(result);
-}
-
-UniValue gatewayspartialsign(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); std::string coin,parthex; uint256 txid;
-    if ( fHelp || params.size() != 3 )
-        throw runtime_error("gatewayspartialsign txidaddr refcoin hex\n");
-    if ( ensure_CCrequirements(EVAL_GATEWAYS) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    Lock2NSPV(mypk);
-    txid = Parseuint256((char *)params[0].get_str().c_str());
-    coin = params[1].get_str();
-    parthex = params[2].get_str();
-    result = GatewaysPartialSign(mypk,0,txid,coin,parthex);
-    if ( result[JSON_HEXTX].getValStr().size() > 0  )
-    {
-        result.push_back(Pair("result", "success"));
-    }
     Unlock2NSPV(mypk);
     return(result);
 }
 
-UniValue gatewayscompletesigning(const UniValue& params, bool fHelp, const CPubKey& mypk)
+UniValue gatewayswithdrawsign(const UniValue& params, bool fHelp, const CPubKey& mypk)
 {
     UniValue result(UniValue::VOBJ); uint256 withdrawtxid; std::string txhex,coin;
     if ( fHelp || params.size() != 3 )
-        throw runtime_error("gatewayscompletesigning withdrawtxid coin hex\n");
+        throw runtime_error("gatewayswithdrawsign withdrawtxid coin hex\n");
     if ( ensure_CCrequirements(EVAL_GATEWAYS) < 0 )
         throw runtime_error(CC_REQUIREMENTS_MSG);
     Lock2NSPV(mypk);
     withdrawtxid = Parseuint256((char *)params[0].get_str().c_str());
     coin = params[1].get_str();
     txhex = params[2].get_str();
-    result = GatewaysCompleteSigning(mypk,0,withdrawtxid,coin,txhex);
+    result = GatewaysWithdrawSign(mypk,0,withdrawtxid,coin,txhex);
     if ( result[JSON_HEXTX].getValStr().size() > 0  )
     {
         result.push_back(Pair("result", "success"));
@@ -6929,7 +6777,6 @@ UniValue gatewaysmarkdone(const UniValue& params, bool fHelp, const CPubKey& myp
     Unlock2NSPV(mypk);
     return(result);
 }
-
 UniValue gatewayspendingdeposits(const UniValue& params, bool fHelp, const CPubKey& mypk)
 {
     uint256 bindtxid; std::string coin;
@@ -6942,28 +6789,28 @@ UniValue gatewayspendingdeposits(const UniValue& params, bool fHelp, const CPubK
     return(GatewaysPendingDeposits(mypk,bindtxid,coin));
 }
 
-UniValue gatewayspendingwithdraws(const UniValue& params, bool fHelp, const CPubKey& mypk)
+UniValue gatewayspendingsignwithdraws(const UniValue& params, bool fHelp, const CPubKey& mypk)
 {
     uint256 bindtxid; std::string coin;
     if ( fHelp || params.size() != 2 )
-        throw runtime_error("gatewayspendingwithdraws bindtxid coin\n");
+        throw runtime_error("gatewayspendingsignwithdraws bindtxid coin\n");
     if ( ensure_CCrequirements(EVAL_GATEWAYS) < 0 )
         throw runtime_error(CC_REQUIREMENTS_MSG);
     bindtxid = Parseuint256((char *)params[0].get_str().c_str());
     coin = params[1].get_str();
-    return(GatewaysPendingWithdraws(mypk,bindtxid,coin));
+    return(GatewaysPendingSignWithdraws(mypk,bindtxid,coin));
 }
 
-UniValue gatewaysprocessed(const UniValue& params, bool fHelp, const CPubKey& mypk)
+UniValue gatewayssignedwithdraws(const UniValue& params, bool fHelp, const CPubKey& mypk)
 {
     uint256 bindtxid; std::string coin;
     if ( fHelp || params.size() != 2 )
-        throw runtime_error("gatewaysprocessed bindtxid coin\n");
+        throw runtime_error("gatewayssignedwithdraws bindtxid coin\n");
     if ( ensure_CCrequirements(EVAL_GATEWAYS) < 0 )
         throw runtime_error(CC_REQUIREMENTS_MSG);
     bindtxid = Parseuint256((char *)params[0].get_str().c_str());
     coin = params[1].get_str();
-    return(GatewaysProcessedWithdraws(mypk,bindtxid,coin));
+    return(GatewaysSignedWithdraws(mypk,bindtxid,coin));
 }
 
 UniValue oracleslist(const UniValue& params, bool fHelp, const CPubKey& mypk)
@@ -8056,11 +7903,11 @@ UniValue heirfund(const UniValue& params, bool fHelp, const CPubKey& mypk)
 
 	if (params.size() == 6)	// tokens in satoshis:
 		amount = atoll(params[0].get_str().c_str());
-    else { // coins:
-        amount = 0;   
-        if (!ParseFixedPoint(params[0].get_str(), 8, &amount))  // using ParseFixedPoint instead atof to avoid small round errors
-            amount = -1; // set error
-    }
+    	else { // coins:
+        	amount = 0;   
+        	if (!ParseFixedPoint(params[0].get_str(), 8, &amount))  // using ParseFixedPoint instead atof to avoid small round errors
+            		amount = -1; // set error
+    	}
 	if (amount <= 0) {
 		result.push_back(Pair("result", "error"));
 		result.push_back(Pair("error", "incorrect amount"));
@@ -8085,8 +7932,7 @@ UniValue heirfund(const UniValue& params, bool fHelp, const CPubKey& mypk)
 
 	memo = params[4].get_str();
 
-	if (params.size() == 6) 
-    {
+	if (params.size() == 6) {
 		tokenid = Parseuint256((char*)params[5].get_str().c_str());
 		if (tokenid == zeroid) {
 			result.push_back(Pair("result", "error"));
@@ -8124,9 +7970,9 @@ UniValue heiradd(const UniValue& params, bool fHelp, const CPubKey& mypk)
 	const CKeyStore& keystore = *pwalletMain;
 	LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    std::string strAmount = params[0].get_str();
+	std::string strAmount = params[0].get_str();
 	fundingtxid = Parseuint256((char*)params[1].get_str().c_str());
-    
+
 	result = HeirAddCaller(fundingtxid, 0, strAmount);
 	return result;
 }
@@ -8145,7 +7991,7 @@ UniValue heirclaim(const UniValue& params, bool fHelp, const CPubKey& mypk)
 	const CKeyStore& keystore = *pwalletMain;
 	LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    std::string strAmount = params[0].get_str();
+    	std::string strAmount = params[0].get_str();
 	fundingtxid = Parseuint256((char*)params[1].get_str().c_str());
 	result = HeirClaimCaller(fundingtxid, 0, strAmount);
 	return result;

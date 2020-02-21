@@ -402,33 +402,37 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
                 if ( zflags[0] == 0 || zflags[0] == 3 )
                 {
                     // 15 51 102 162 230 303 380 460 543 627 714 803 892 983 1075 These are the 0.5% per blk numerator constants for W=2 to 16 if denominator is 100. - zawy
-                    if ( ASSETCHAINS_BLOCKTIME >= 60 && ASSETCHAINS_BLOCKTIME < 100 )
-                        bnTarget = RT_CST_RST_outer(height,pblock->nTime,bnTarget,ts,ct,1,60,1,10);
-                    else if ( ASSETCHAINS_BLOCKTIME >= 100 )
-                        bnTarget = RT_CST_RST_outer(height,pblock->nTime,bnTarget,ts,ct,1,100,1,10);
+                    if ( ASSETCHAINS_ADAPTIVEPOW <= 3 )
+                    {
+                        if ( ASSETCHAINS_BLOCKTIME >= 60 && ASSETCHAINS_BLOCKTIME < 100 )
+                            bnTarget = RT_CST_RST_outer(height,pblock->nTime,bnTarget,ts,ct,1,60,1,10);
+                        else if ( ASSETCHAINS_BLOCKTIME >= 100 )
+                            bnTarget = RT_CST_RST_outer(height,pblock->nTime,bnTarget,ts,ct,1,100,1,10);
+                        if ( bnTarget < origtarget )
+                            zawyflag = 2;
+                    }
+                    if ( ASSETCHAINS_ADAPTIVEPOW <= 4 )
+                        bnTarget = RT_CST_RST_outer(height,pblock->nTime,origtarget,ts,ct,15,100,2,20);
                     if ( bnTarget < origtarget )
                         zawyflag = 2;
                     else
                     {
-                        bnTarget = RT_CST_RST_outer(height,pblock->nTime,origtarget,ts,ct,15,100,2,20);
+                        if ( ASSETCHAINS_ADAPTIVEPOW <= 5 )
+                            bnTarget = RT_CST_RST_outer(height,pblock->nTime,origtarget,ts,ct,1,2,3,30);
                         if ( bnTarget < origtarget )
                             zawyflag = 2;
                         else
                         {
-                            bnTarget = RT_CST_RST_outer(height,pblock->nTime,origtarget,ts,ct,1,2,3,30);
+                            if ( ASSETCHAINS_ADAPTIVEPOW <= 6 )
+                                bnTarget = RT_CST_RST_outer(height,pblock->nTime,origtarget,ts,ct,7,3,6,40);
                             if ( bnTarget < origtarget )
                                 zawyflag = 2;
                             else
                             {
-                                bnTarget = RT_CST_RST_outer(height,pblock->nTime,origtarget,ts,ct,7,3,6,40);
+                                if ( ASSETCHAINS_ADAPTIVEPOW <= 7 )
+                                    bnTarget = RT_CST_RST_outer(height,pblock->nTime,origtarget,ts,ct,12,7,12,50);
                                 if ( bnTarget < origtarget )
                                     zawyflag = 2;
-                                else
-                                {
-                                    bnTarget = RT_CST_RST_outer(height,pblock->nTime,origtarget,ts,ct,12,7,12,50);
-                                    if ( bnTarget < origtarget )
-                                        zawyflag = 2;
-                                }
                             }
                         }
                     }
@@ -438,31 +442,31 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
                     for (i=0; i<50; i++)
                         if ( zflags[i] == 2 )
                             break;
-                    if ( i < 10 )
+                    if ( i < 10 && ASSETCHAINS_ADAPTIVEPOW <= 3 )
                     {
                         bnTarget = RT_CST_RST_inner(height,pblock->nTime,bnTarget,ts,ct,1,i);
                         if ( bnTarget > origtarget )
                             bnTarget = origtarget;
                     }
-                    if ( i < 20 )
+                    if ( i < 20 && ASSETCHAINS_ADAPTIVEPOW <= 4 )
                     {
                         bnTarget2 = RT_CST_RST_inner(height,pblock->nTime,bnTarget,ts,ct,2,i);
                         if ( bnTarget2 < bnTarget )
                             bnTarget = bnTarget2;
                     }
-                    if ( i < 30 )
+                    if ( i < 30 && ASSETCHAINS_ADAPTIVEPOW <= 5 )
                     {
                         bnTarget3 = RT_CST_RST_inner(height,pblock->nTime,bnTarget,ts,ct,3,i);
                         if ( bnTarget3 < bnTarget )
                             bnTarget = bnTarget3;
                     }
-                    if ( i < 40 )
+                    if ( i < 40 && ASSETCHAINS_ADAPTIVEPOW <= 6 )
                     {
                         bnTarget6 = RT_CST_RST_inner(height,pblock->nTime,bnTarget,ts,ct,6,i);
                         if ( bnTarget6 < bnTarget )
                             bnTarget = bnTarget6;
                     }
-                    if ( i < 50 )
+                    if ( i < 50 && ASSETCHAINS_ADAPTIVEPOW <= 7 )
                     {
                         bnTarget12 = RT_CST_RST_inner(height,pblock->nTime,bnTarget,ts,ct,12,i);
                         if ( bnTarget12 < bnTarget)
@@ -794,6 +798,8 @@ int32_t komodo_chosennotary(int32_t *notaryidp,int32_t height,uint8_t *pubkey33,
 int32_t komodo_is_special(uint8_t pubkeys[66][33],int32_t mids[66],uint32_t blocktimes[66],int32_t height,uint8_t pubkey33[33],uint32_t blocktime);
 int32_t komodo_currentheight();
 void komodo_index2pubkey33(uint8_t *pubkey33,CBlockIndex *pindex,int32_t height);
+bool komodo_checkopret(CBlock *pblock, CScript &merkleroot);
+CScript komodo_makeopret(CBlock *pblock, bool fNew);
 extern int32_t KOMODO_CHOSEN_ONE;
 extern char ASSETCHAINS_SYMBOL[KOMODO_ASSETCHAIN_MAXLEN];
 #define KOMODO_ELECTION_GAP 2000
@@ -854,8 +860,16 @@ bool CheckProofOfWork(const CBlockHeader &blkHeader, uint8_t *pubkey33, int32_t 
             }
             if ( (flag != 0 || special2 > 0) && special2 != -2 )
             {
-                //fprintf(stderr,"EASY MINING ht.%d\n",height);
                 bnTarget.SetCompact(KOMODO_MINDIFF_NBITS,&fNegative,&fOverflow);
+                /*
+                const void* pblock = &blkHeader;
+                CScript merkleroot = CScript();
+                if ( height > nDecemberHardforkHeight && !komodo_checkopret((CBlock*)pblock, merkleroot) ) // December 2019 hardfork
+                {
+                    fprintf(stderr, "failed or missing expected.%s != %s\n", komodo_makeopret((CBlock*)pblock, false).ToString().c_str(), merkleroot.ToString().c_str());
+                    return false;
+                }
+                */
             }
         }
     }

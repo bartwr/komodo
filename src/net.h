@@ -276,7 +276,7 @@ public:
     int64_t nLastRecv;
     int64_t nTimeConnected;
     int64_t nTimeOffset;
-    uint32_t prevtimes[16];
+    uint32_t prevtimes[16],dexlastping;
     CAddress addr;
     std::string addrName;
     CService addrLocal;
@@ -294,9 +294,6 @@ public:
     bool fNetworkNode;
     bool fSuccessfullyConnected;
     bool fDisconnect;
-    // count blocks seen.
-    int8_t nBlocksinARow;
-    int8_t nBlocksinARow2;
     // We use fRelayTxes for two purposes -
     // a) it allows us to not relay tx invs before receiving the peer's version message
     // b) the peer may tell us in its version message that we should not relay tx invs
