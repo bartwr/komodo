@@ -299,7 +299,6 @@ extern UniValue gatewaysdumpprivkey(const UniValue& params, bool fHelp, const CP
 extern UniValue gatewaysexternaladdress(const UniValue& params, bool fHelp, const CPubKey& mypk);
 extern UniValue gatewaysbind(const UniValue& params, bool fHelp, const CPubKey& mypk);
 extern UniValue gatewaysdeposit(const UniValue& params, bool fHelp, const CPubKey& mypk);
-extern UniValue gatewaysclaim(const UniValue& params, bool fHelp, const CPubKey& mypk);
 extern UniValue gatewayswithdraw(const UniValue& params, bool fHelp, const CPubKey& mypk);
 extern UniValue gatewayswithdrawsign(const UniValue& params, bool fHelp, const CPubKey& mypk);
 extern UniValue gatewaysmarkdone(const UniValue& params, bool fHelp, const CPubKey& mypk);

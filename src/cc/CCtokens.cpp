@@ -321,7 +321,7 @@ int64_t IsTokensvout(bool goDeeper, bool checkPubkeys /*<--not used, always true
             std::vector<std::pair<uint8_t, vscript_t>>  oprets;
 
             uint8_t evalCodeNonfungible = 0;
-            uint8_t evalCode1 = EVAL_TOKENS;     // if both payloads are empty maybe it is a transfer to non-payload-one-eval-token vout like GatewaysClaim
+            uint8_t evalCode1 = EVAL_TOKENS;     // if both payloads are empty maybe it is a transfer to non-payload-one-eval-token vout like GatewaysDeposit
             uint8_t evalCode2 = 0;              // will be checked if zero or not
 
             // test vouts for possible token use-cases:
@@ -707,7 +707,7 @@ int64_t HasBurnedTokensvouts(struct CCcontract_info *cp, Eval* eval, const CTran
     std::vector<std::pair<uint8_t, vscript_t>>  oprets;
     vscript_t vopretExtra, vopretNonfungible;
 
-    uint8_t evalCode = EVAL_TOKENS;     // if both payloads are empty maybe it is a transfer to non-payload-one-eval-token vout like GatewaysClaim
+    uint8_t evalCode = EVAL_TOKENS;     // if both payloads are empty maybe it is a transfer to non-payload-one-eval-token vout like GatewaysDepost
     uint8_t evalCode2 = 0;              // will be checked if zero or not
 
                                         // test vouts for possible token use-cases:
