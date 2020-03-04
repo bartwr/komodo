@@ -694,7 +694,7 @@ bool OraclesValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &t
                 case 'R': // register
                     // vin.0: normal inputs
                     // vin.1: CC input from pubkeys oracle CC addres - to prove that register came from pubkey that is registred (activation on Jul 15th 2019 00:00)
-                    // vout.0: marker to oracle narmal address
+                    // vout.0: marker to oracle normal address
                     // vout.1: baton CC utxo
                     // vout.2: marker from oraclesfund tx to normal pubkey address (activation on Jul 15th 2019 00:00)
                     // vout.n-2: change, if any
@@ -718,8 +718,6 @@ bool OraclesValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &t
                             return eval->Invalid("invalid vin.1 for oraclesregister, it must be CC vin or pubkey not same as vin pubkey, register and fund tx must be done from owner of pubkey that registers to oracle!!");
                         else if (CCtxidaddr(tmpaddress,oracletxid).IsValid() && ConstrainVout(tx.vout[0],0,tmpaddress,CC_MARKER_VALUE)==0)
                             return eval->Invalid("invalid marker for oraclesregister!");
-                        else if (OracleBatonPk(tmpaddress,cp).IsValid() && ConstrainVout(tx.vout[1],1,tmpaddress,CC_MARKER_VALUE))
-                            return eval->Invalid("invalid vout.1, it has to be vout to baton address with CC_MARKER_VALUE!");
                         else if (!Getscriptaddress(tmpaddress,CScript() << ParseHex(HexStr(tmppk)) << OP_CHECKSIG) || ConstrainVout(tx.vout[2],0,tmpaddress,CC_MARKER_VALUE)==0)
                             return eval->Invalid("pubkey in OP_RETURN and in vout.2 not matching, register must be done from owner of pubkey that registers to oracle!");
                     }
