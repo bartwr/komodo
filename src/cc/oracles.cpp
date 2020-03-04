@@ -330,7 +330,7 @@ uint256 OraclesBatontxid(uint256 reforacletxid,CPubKey refpk)
             if ( regtx.vout.size() > 0 && DecodeOraclesOpRet(regtx.vout[regtx.vout.size()-1].scriptPubKey,oracletxid,pk,datafee) == 'R' && oracletxid == reforacletxid && pk == refpk )
             {
                 Getscriptaddress(batonaddr,regtx.vout[1].scriptPubKey);
-                batontxid = OracleBatonUtxo(cp,oracletxid,batonaddr,pk,data);
+                batontxid = OracleBatonUtxo(CC_MARKER_VALUE,cp,oracletxid,batonaddr,pk,data);
                 break;
             }
         }
@@ -1010,7 +1010,7 @@ UniValue OracleData(const CPubKey& pk, int64_t txfee,uint256 oracletxid,std::vec
     if ( AddNormalinputs(mtx,mypk,txfee+CC_MARKER_VALUE,3,pk.IsValid()) > 0 ) // have enough funds even if baton utxo not there
     {
         batonpk = OracleBatonPk(batonaddr,cp);
-        batontxid = OracleBatonUtxo(cp,oracletxid,batonaddr,mypk,prevdata);
+        batontxid = OracleBatonUtxo(CC_MARKER_VALUE,cp,oracletxid,batonaddr,mypk,prevdata);
         if ( batontxid != zeroid ) // not impossible to fail, but hopefully a very rare event
             mtx.vin.push_back(CTxIn(batontxid,1,CScript()));
         else fprintf(stderr,"warning: couldnt find baton utxo %s\n",batonaddr);
@@ -1192,7 +1192,7 @@ UniValue OracleInfo(uint256 origtxid)
                     UniValue obj(UniValue::VOBJ);
                     obj.push_back(Pair("publisher",pubkey33_str(str,(uint8_t *)pk.begin())));
                     Getscriptaddress(batonaddr,tx.vout[1].scriptPubKey);
-                    batontxid = OracleBatonUtxo(cp,oracletxid,batonaddr,pk,data);
+                    batontxid = OracleBatonUtxo(CC_MARKER_VALUE,cp,oracletxid,batonaddr,pk,data);
                     obj.push_back(Pair("baton",batonaddr));
                     obj.push_back(Pair("batontxid",uint256_str(str,batontxid)));
                     funding = LifetimeOraclesFunds(cp,oracletxid,pk);
