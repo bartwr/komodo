@@ -693,7 +693,7 @@ bool OraclesValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &t
                     break;
                 case 'R': // register
                     // vin.0: normal inputs
-                    // vin.n-1: CC input from pubkeys oracle CC addres - to prove that register came from pubkey that is registred (activation on Jul 15th 2019 00:00)
+                    // vin.1: CC input from pubkeys oracle CC addres - to prove that register came from pubkey that is registred (activation on Jul 15th 2019 00:00)
                     // vout.0: marker to oracle narmal address
                     // vout.1: baton CC utxo
                     // vout.2: marker from oraclesfund tx to normal pubkey address (activation on Jul 15th 2019 00:00)
@@ -713,14 +713,13 @@ bool OraclesValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &t
                             return eval->Invalid("invalid marker for oraclescreate!");
                         else if ( IsCCInput(tx.vin[0].scriptSig) != 0 )
                             return eval->Invalid("vin.0 is normal for oraclesregister!");
-                        else if ((*cp->ismyvin)(tx.vin[1].scriptSig) == 0 && (*cp->ismyvin)(tx.vin[tx.vin.size()-1].scriptSig) == 0)
-                            return eval->Invalid("there is no CC vin from oraclesfund tx");
-                        else if ((*cp->ismyvin)(tx.vin[1].scriptSig) == 1 && (myGetTransaction(tx.vin[1].prevout.hash,tmptx,hashblock)==0 || DecodeOraclesOpRet(tmptx.vout[tmptx.vout.size()-1].scriptPubKey,txid,tmppk,amount)!='F'
-                                || tmptx.vout[tx.vin[1].prevout.n].nValue!=CC_MARKER_VALUE || !Getscriptaddress(vinaddress,tmptx.vout[tx.vin[1].prevout.n].scriptPubKey)
-                                || !GetCCaddress(cp,tmpaddress,tmppk) || strcmp(tmpaddress,vinaddress)!=0) || oracletxid!=txid)
+                        else if ((*cp->ismyvin)(tx.vin[1].scriptSig) == 0 || myGetTransaction(tx.vin[1].prevout.hash,tmptx,hashblock)==0 || DecodeOraclesOpRet(tmptx.vout[tmptx.vout.size()-1].scriptPubKey,txid,tmppk,amount)!='F'
+                                || !GetCCaddress(cp,tmpaddress,tmppk) || ConstrainVout(tmptx.vout[tx.vin[1].prevout.n],1,tmpaddress,CC_MARKER_VALUE)==0 || oracletxid!=txid)
                             return eval->Invalid("invalid vin.1 for oraclesregister, it must be CC vin or pubkey not same as vin pubkey, register and fund tx must be done from owner of pubkey that registers to oracle!!");
                         else if (CCtxidaddr(tmpaddress,oracletxid).IsValid() && ConstrainVout(tx.vout[0],0,tmpaddress,CC_MARKER_VALUE)==0)
                             return eval->Invalid("invalid marker for oraclesregister!");
+                        else if (OracleBatonPk(tmpaddress,cp).IsValid() && ConstrainVout(tx.vout[1],1,tmpaddress,CC_MARKER_VALUE))
+                            return eval->Invalid("invalid vout.1, it has to be vout to baton address with CC_MARKER_VALUE!");
                         else if (!Getscriptaddress(tmpaddress,CScript() << ParseHex(HexStr(tmppk)) << OP_CHECKSIG) || ConstrainVout(tx.vout[2],0,tmpaddress,CC_MARKER_VALUE)==0)
                             return eval->Invalid("pubkey in OP_RETURN and in vout.2 not matching, register must be done from owner of pubkey that registers to oracle!");
                     }

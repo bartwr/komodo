@@ -551,6 +551,8 @@ bool PegsValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, 
         // else
         // {
             txid = tx.GetHash();
+            CCOpretCheck(eval,tx,true,true,true);
+            CCExactAmounts(eval,tx,CC_TXFEE);
             if ((funcid=DecodePegsOpRet(tx,pegstxid,tokenid)) !=0 )
             {
                 pegspk=GetUnspendable(cp,0);
