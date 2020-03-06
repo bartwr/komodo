@@ -219,7 +219,7 @@ uint8_t DecodeGatewaysDepositOpRet(const CScript &scriptPubKey,uint256 &tokenid,
     }
     else GetOpReturnData(scriptPubKey, vopret);
     script = (uint8_t *)vopret.data();
-    if ( vopret.size() > 2 && script[0]==EVAL_GATEWAYS && E_UNMARSHAL(vopret,ss >> e; ss >> f; ss >> tokenid; ss >> bindtxid; ss >> refcoin;  ss >> publishers; ss >> txids; ss >> height; ss >> cointxid; ss >> claimvout; ss >> deposithex; ss >> proof; ss >> destpub; ss >> amount) != 0 )
+    if ( vopret.size() > 2 && script[0]==EVAL_GATEWAYS && E_UNMARSHAL(vopret,ss >> e; ss >> f; ss >> tokenid; ss >> bindtxid; ss >> refcoin; ss >> publishers; ss >> txids; ss >> height; ss >> cointxid; ss >> claimvout; ss >> deposithex; ss >> proof; ss >> destpub; ss >> amount) != 0 )
     {
         return(f);
     }
@@ -516,8 +516,8 @@ bool GatewaysValidate(struct CCcontract_info *cp,Eval *eval,const CTransaction &
                         //vout.n-1: opreturn - 'C' tokenid bindtxid coin deposittxid destpub amount
                         if ((numvouts=tx.vout.size()) < 1 || DecodeGatewaysDepositOpRet(tx.vout[numvouts-1].scriptPubKey,tmptokenid,bindtxid,tmprefcoin,publishers,txids,height,cointxid,claimvout,hex,proof,pubkey,amount) != 'D')
                             return eval->Invalid("invalid gatewaysdeposit OP_RETURN data!");
-                        else if ( CCCointxidExists("gatewayscc-1",cointxid) != 0 )
-                            return eval->Invalid("cointxid already processed with gatewaysdeposit!");
+                        else if ( CCCointxidExists("gatewayscc-1",tx.GetHash(),cointxid) != 0 )
+                            return eval->Invalid("cointxid " + cointxid.GetHex() + " already processed with gatewaysdeposit!");
                         else if ( IsCCInput(tx.vin[0].scriptSig) != 0 )
                             return eval->Invalid("vin.0 is normal for gatewaysdeposit!");
                         else if ( IsCCInput(tx.vin[1].scriptSig) == 0 )
@@ -753,11 +753,12 @@ int64_t AddGatewaysInputs(struct CCcontract_info *cp,CMutableTransaction &mtx,CP
                 if ( myGetTransaction(txid,vintx,hashBlock) != 0 )
                 {
                     funcid=DecodeGatewaysOpRet(vintx.vout[vintx.vout.size()-1].scriptPubKey);
-                    if ((vout==0 && funcid=='B' && bindtxid==txid && total != 0 && maxinputs != 0) ||
-                        (vout==1 && funcid=='W' && DecodeGatewaysWithdrawOpRet(vintx.vout[vintx.vout.size()-1].scriptPubKey,tmptokenid,tmpbindtxid,tmppk,tmprefcoin,withdrawpub,amount) == 'W' &&
-                        tmpbindtxid==bindtxid && tmprefcoin==refcoin && tmptokenid==tokenid && total != 0 && maxinputs != 0) ||
-                        (vout==1 && funcid=='D' && DecodeGatewaysDepositOpRet(vintx.vout[vintx.vout.size()-1].scriptPubKey,tmptokenid,bindtxid,tmprefcoin,publishers,txids,height,cointxid,claimvout,hex,proof,pubkey,amount) == 'D' &&
-                        tmpbindtxid==bindtxid && tmprefcoin==refcoin && tmptokenid==tokenid && total != 0 && maxinputs != 0))
+                    std::cout << txid.GetHex() << " " << " " << vout << " " << funcid << " " << it->second.satoshis << std::endl;
+                    if (((vout==0 && funcid=='B' && bindtxid==txid) ||
+                        (vout==2 && funcid=='D' && DecodeGatewaysDepositOpRet(vintx.vout[vintx.vout.size()-1].scriptPubKey,tmptokenid,tmpbindtxid,tmprefcoin,publishers,txids,height,cointxid,claimvout,hex,proof,pubkey,amount) == 'D' &&
+                        (std::cout << tmptokenid.GetHex() << " " << tmpbindtxid.GetHex() << " " << tmprefcoin << std::endl)  && tmpbindtxid==bindtxid && tmprefcoin==refcoin && tmptokenid==tokenid) ||
+                        (vout==2 && funcid=='W' && DecodeGatewaysWithdrawOpRet(vintx.vout[vintx.vout.size()-1].scriptPubKey,tmptokenid,tmpbindtxid,tmppk,tmprefcoin,withdrawpub,amount) == 'W' &&
+                        tmpbindtxid==bindtxid && tmprefcoin==refcoin && tmptokenid==tokenid))  && total != 0 && maxinputs != 0)
                     {
                         mtx.vin.push_back(CTxIn(txid,vout,CScript()));
                         totalinputs += it->second.satoshis;
@@ -897,7 +898,7 @@ UniValue GatewaysDeposit(const CPubKey& pk, uint64_t txfee,uint256 bindtxid,int3
     LOGSTREAM("gatewayscc",CCLOG_DEBUG2, stream << "cointxid." << cointxid.GetHex() << " m." << m << " of n." << n << std::endl);
     if ( merkleroot == zeroid || m < n/2 )
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "couldnt find merkleroot for ht." << height << " " << coin << " oracle." << oracletxid.GetHex() << " m." << m << " vs n." << n);
-    if ( CCCointxidExists("gatewayscc-1",cointxid) != 0 )
+    if ( CCCointxidExists("gatewayscc-1",zeroid,cointxid) != 0 )
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "cointxid." << cointxid.GetHex() << " already processed with gatewaysdeposit");
     if ( GatewaysVerify(depositaddr,oracletxid,claimvout,coin,cointxid,deposithex,proof,merkleroot,destpub,taddr,prefix,prefix2) != amount )
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "deposittxid didnt validate");
@@ -907,7 +908,7 @@ UniValue GatewaysDeposit(const CPubKey& pk, uint64_t txfee,uint256 bindtxid,int3
         {
             mtx.vout.push_back(MakeCC1vout(EVAL_TOKENS,amount,destpub));
             mtx.vout.push_back(CTxOut(CC_MARKER_VALUE,CScript() << ParseHex(HexStr(CCtxidaddr(txidaddr,cointxid))) << OP_CHECKSIG));
-            if ( inputs > amount ) mtx.vout.push_back(MakeTokensCC1vout(EVAL_GATEWAYS,inputs-amount,gatewayspk)); 
+            if ( inputs > amount ) mtx.vout.push_back(MakeTokensCC1vout(cp->evalcode,inputs-amount,gatewayspk)); 
             return(FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodeGatewaysDepositOpRet('D',tokenid,bindtxid,coin,publishers,txids,height,cointxid,claimvout,deposithex,proof,destpub,amount)));
         }
         CCERR_RESULT("gatewayscc",CCLOG_ERROR, stream << "cant find enough token inputs from gateway");

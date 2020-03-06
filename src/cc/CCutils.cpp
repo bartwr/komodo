@@ -657,7 +657,7 @@ int64_t CCOraclesGetDepositBalance(char const *logcategory,uint256 reforacletxid
 
 int32_t NSPV_coinaddr_inmempool(char const *logcategory,char *coinaddr,uint8_t CCflag);
 
-int32_t myIs_coinaddr_inmempoolvout(char const *logcategory,char *coinaddr)
+int32_t myIs_coinaddr_inmempoolvout(char const *logcategory,uint256 txid,char *coinaddr)
 {
     int32_t i,n; char destaddr[64];
     if ( KOMODO_NSPV_SUPERLITE )
@@ -667,7 +667,7 @@ int32_t myIs_coinaddr_inmempoolvout(char const *logcategory,char *coinaddr)
         const CTransaction &tx = e.GetTx();
         if ( (n= tx.vout.size()) > 0 )
         {
-            const uint256 &txid = tx.GetHash();
+            if (txid == tx.GetHash()) continue;
             for (i=0; i<n; i++)
             {
                 Getscriptaddress(destaddr,tx.vout[i].scriptPubKey);
@@ -708,7 +708,7 @@ int32_t myGet_mempool_txs(std::vector<CTransaction> &txs,uint8_t evalcode,uint8_
     return(i);
 }
 
-int32_t CCCointxidExists(char const *logcategory,uint256 cointxid)
+int32_t CCCointxidExists(char const *logcategory,uint256 txid, uint256 cointxid)
 {
     char txidaddr[64]; std::string coin; int32_t numvouts; uint256 hashBlock;
     std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
@@ -718,7 +718,7 @@ int32_t CCCointxidExists(char const *logcategory,uint256 cointxid)
     {
         return(-1);
     }
-    return(myIs_coinaddr_inmempoolvout(logcategory,txidaddr));
+    return(myIs_coinaddr_inmempoolvout(logcategory,txid,txidaddr));
 }
 
 bool CompareHexVouts(std::string hex1, std::string hex2)
