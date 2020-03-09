@@ -152,7 +152,7 @@
 #define KMD_P2SHTYPE 85
 #define KMD_WIFTYPE 188
 #define KMD_TADDR 0
-#define CC_MARKER_VALUE 10000
+#define CC_MARKER_VALUE 1000
 #define CC_TXFEE 10000
 
 CScript EncodeGatewaysBindOpRet(uint8_t funcid,uint256 tokenid,std::string coin,int64_t totalsupply,uint256 oracletxid,uint8_t M,uint8_t N,std::vector<CPubKey> gatewaypubkeys,uint8_t taddr,uint8_t prefix,uint8_t prefix2,uint8_t wiftype)
@@ -907,7 +907,7 @@ UniValue GatewaysDeposit(const CPubKey& pk, uint64_t txfee,uint256 bindtxid,int3
         if ((inputs=AddGatewaysInputs(cp, mtx, gatewayspk, bindtxid, amount, 60)) >= amount)
         {
             mtx.vout.push_back(MakeCC1vout(EVAL_TOKENS,amount,destpub));
-            mtx.vout.push_back(CTxOut(CC_MARKER_VALUE,CScript() << ParseHex(HexStr(CCtxidaddr(txidaddr,cointxid))) << OP_CHECKSIG));
+            mtx.vout.push_back(MakeCC1vout(cp->evalcode,CC_MARKER_VALUE,CCtxidaddr(txidaddr,cointxid)));
             if ( inputs > amount ) mtx.vout.push_back(MakeTokensCC1vout(cp->evalcode,inputs-amount,gatewayspk)); 
             return(FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodeGatewaysDepositOpRet('D',tokenid,bindtxid,coin,publishers,txids,height,cointxid,claimvout,deposithex,proof,destpub,amount)));
         }
