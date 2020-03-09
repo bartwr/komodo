@@ -471,6 +471,12 @@ int32_t GatewaysBindExists(struct CCcontract_info *cp,CPubKey gatewayspk,uint256
     return(0);
 }
 
+bool CheckSupply(const CTransaction& tx,char *gatewaystokensaddr,int64_t totalsupply)
+{
+    for (int i=0;i<100;i++)  if (ConstrainVout(tx.vout[0],1,gatewaystokensaddr,totalsupply)==0) return (false);
+    return (true);
+}
+
 bool GatewaysValidate(struct CCcontract_info *cp,Eval *eval,const CTransaction &tx, uint32_t nIn)
 {
     int32_t numvins,numvouts,preventCCvins,preventCCvouts,i,height,claimvout; bool retval; uint8_t funcid,K,tmpK,M,N,taddr,prefix,prefix2,wiftype;
@@ -534,9 +540,9 @@ bool GatewaysValidate(struct CCcontract_info *cp,Eval *eval,const CTransaction &
                             return eval->Invalid("invalid gatewaysbind OP_RETURN data!"); 
                         else if ( IsCCInput(tmptx.vin[0].scriptSig) != 0 )
                             return eval->Invalid("vin.0 is normal for gatewaysbind!");
-                        else if ( ConstrainVout(tmptx.vout[0],1,gatewaystokensaddr,totalsupply)==0)
-                            return eval->Invalid("invalid tokens to gateways vout for gatewaysbind!");
-                        else if ( ConstrainVout(tmptx.vout[1],1,cp->unspendableCCaddr,CC_MARKER_VALUE)==0)
+                        else if ( CheckSupply(tmptx,gatewaystokensaddr,totalsupply)==0)
+                            return eval->Invalid("invalid tokens to gateways vouts for gatewaysbind!");
+                        else if ( tmptx.vout.size()!=102 || ConstrainVout(tmptx.vout[100],1,cp->unspendableCCaddr,CC_MARKER_VALUE)==0)
                             return eval->Invalid("invalid marker vout for gatewaysbind!");
                         else if (tmprefcoin!=refcoin)
                             return eval->Invalid("refcoin different than in bind tx");
