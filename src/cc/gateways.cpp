@@ -524,8 +524,8 @@ bool GatewaysValidate(struct CCcontract_info *cp,Eval *eval,const CTransaction &
                             return eval->Invalid("vin.1 is CC for gatewaysdeposit!");
                         else if (_GetCCaddress(destaddr,EVAL_TOKENS,pubkey)==0 || ConstrainVout(tx.vout[0],1,destaddr,amount)==0)
                             return eval->Invalid("invalid vout tokens to destpub for gatewaysdeposit!");
-                        else if ( CCtxidaddr(destaddr,cointxid)==CPubKey() || ConstrainVout(tx.vout[1],0,destaddr,CC_MARKER_VALUE)==0)
-                            return eval->Invalid("invalid normal marker vout for gatewaysdeposit!");
+                        else if ( CCtxidaddr(destaddr,cointxid)==CPubKey() || ConstrainVout(tx.vout[1],1,destaddr,CC_MARKER_VALUE)==0)
+                            return eval->Invalid("invalid CC marker vout for gatewaysdeposit!");
                         else if (numvouts>2 && (GetTokensCCaddress(cp,destaddr,gatewayspk)==0 || ConstrainVout(tx.vout[2],1,destaddr,0)==0))
                             return eval->Invalid("invalid vout tokens change to gateways global address for gatewaysdeposit!");
                         else if (myGetTransaction(bindtxid,tmptx,hashblock) == 0)
