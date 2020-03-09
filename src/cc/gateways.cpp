@@ -759,12 +759,11 @@ int64_t AddGatewaysInputs(struct CCcontract_info *cp,CMutableTransaction &mtx,CP
                 if ( myGetTransaction(txid,vintx,hashBlock) != 0 )
                 {
                     funcid=DecodeGatewaysOpRet(vintx.vout[vintx.vout.size()-1].scriptPubKey);
-                    std::cout << txid.GetHex() << " " << " " << vout << " " << funcid << " " << it->second.satoshis << std::endl;
-                    if (((vout==0 && funcid=='B' && bindtxid==txid) ||
+                    if (((funcid=='B' && bindtxid==txid) ||
                         (vout==2 && funcid=='D' && DecodeGatewaysDepositOpRet(vintx.vout[vintx.vout.size()-1].scriptPubKey,tmptokenid,tmpbindtxid,tmprefcoin,publishers,txids,height,cointxid,claimvout,hex,proof,pubkey,amount) == 'D' &&
-                        (std::cout << tmptokenid.GetHex() << " " << tmpbindtxid.GetHex() << " " << tmprefcoin << std::endl)  && tmpbindtxid==bindtxid && tmprefcoin==refcoin && tmptokenid==tokenid) ||
+                        tmpbindtxid==bindtxid && tmprefcoin==refcoin && tmptokenid==tokenid) ||
                         (vout==2 && funcid=='W' && DecodeGatewaysWithdrawOpRet(vintx.vout[vintx.vout.size()-1].scriptPubKey,tmptokenid,tmpbindtxid,tmppk,tmprefcoin,withdrawpub,amount) == 'W' &&
-                        tmpbindtxid==bindtxid && tmprefcoin==refcoin && tmptokenid==tokenid))  && total != 0 && maxinputs != 0)
+                        tmpbindtxid==bindtxid && tmprefcoin==refcoin && tmptokenid==tokenid)) && myIsutxo_spentinmempool(ignoretxid,ignorevin,txid,vout)==0 && total != 0 && maxinputs != 0)
                     {
                         mtx.vin.push_back(CTxIn(txid,vout,CScript()));
                         totalinputs += it->second.satoshis;
