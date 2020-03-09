@@ -661,7 +661,7 @@ int32_t myIs_coinaddr_inmempoolvout(char const *logcategory,uint256 txid,char *c
 {
     int32_t i,n; char destaddr[64];
     if ( KOMODO_NSPV_SUPERLITE )
-        return(NSPV_coinaddr_inmempool(logcategory,coinaddr,1));
+        return(NSPV_coinaddr_inmempool(logcategory,coinaddr,0));
     BOOST_FOREACH(const CTxMemPoolEntry &e,mempool.mapTx)
     {
         const CTransaction &tx = e.GetTx();
@@ -713,7 +713,7 @@ int32_t CCCointxidExists(char const *logcategory,uint256 txid, uint256 cointxid)
     char txidaddr[64]; std::string coin; int32_t numvouts; uint256 hashBlock;
     std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
     CCtxidaddr(txidaddr,cointxid);
-    SetCCtxids(addressIndex,txidaddr,true);
+    SetCCtxids(addressIndex,txidaddr,false);
     for (std::vector<std::pair<CAddressIndexKey, CAmount> >::const_iterator it=addressIndex.begin(); it!=addressIndex.end(); it++)
     {
         return(-1);

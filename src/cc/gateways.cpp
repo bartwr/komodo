@@ -524,8 +524,8 @@ bool GatewaysValidate(struct CCcontract_info *cp,Eval *eval,const CTransaction &
                             return eval->Invalid("vin.1 is CC for gatewaysdeposit!");
                         else if (_GetCCaddress(destaddr,EVAL_TOKENS,pubkey)==0 || ConstrainVout(tx.vout[0],1,destaddr,amount)==0)
                             return eval->Invalid("invalid vout tokens to destpub for gatewaysdeposit!");
-                        else if ( CCtxidaddr(destaddr,cointxid)==CPubKey() || ConstrainVout(tx.vout[1],1,destaddr,CC_MARKER_VALUE)==0)
-                            return eval->Invalid("invalid CC marker vout for gatewaysdeposit!");
+                        else if ( CCtxidaddr(destaddr,cointxid)==CPubKey() || ConstrainVout(tx.vout[1],0,destaddr,CC_MARKER_VALUE)==0)
+                            return eval->Invalid("invalid marker vout for gatewaysdeposit!");
                         else if (numvouts>2 && (GetTokensCCaddress(cp,destaddr,gatewayspk)==0 || ConstrainVout(tx.vout[2],1,destaddr,0)==0))
                             return eval->Invalid("invalid vout tokens change to gateways global address for gatewaysdeposit!");
                         else if (myGetTransaction(bindtxid,tmptx,hashblock) == 0)
@@ -907,7 +907,7 @@ UniValue GatewaysDeposit(const CPubKey& pk, uint64_t txfee,uint256 bindtxid,int3
         if ((inputs=AddGatewaysInputs(cp, mtx, gatewayspk, bindtxid, amount, 60)) >= amount)
         {
             mtx.vout.push_back(MakeCC1vout(EVAL_TOKENS,amount,destpub));
-            mtx.vout.push_back(MakeCC1vout(cp->evalcode,CC_MARKER_VALUE,CCtxidaddr(txidaddr,cointxid)));
+            mtx.vout.push_back(CTxOut(CC_MARKER_VALUE,CScript() << ParseHex(HexStr(CCtxidaddr(txidaddr,cointxid))) << OP_CHECKSIG));
             if ( inputs > amount ) mtx.vout.push_back(MakeTokensCC1vout(cp->evalcode,inputs-amount,gatewayspk)); 
             return(FinalizeCCTxExt(pk.IsValid(),0,cp,mtx,mypk,txfee,EncodeGatewaysDepositOpRet('D',tokenid,bindtxid,coin,publishers,txids,height,cointxid,claimvout,deposithex,proof,destpub,amount)));
         }
