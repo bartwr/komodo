@@ -542,7 +542,7 @@ bool GatewaysValidate(struct CCcontract_info *cp,Eval *eval,const CTransaction &
                             return eval->Invalid("vin.0 is normal for gatewaysbind!");
                         else if ( CheckSupply(tmptx,gatewaystokensaddr,totalsupply)==0)
                             return eval->Invalid("invalid tokens to gateways vouts for gatewaysbind!");
-                        else if ( tmptx.vout.size()!=102 || ConstrainVout(tmptx.vout[100],1,cp->unspendableCCaddr,CC_MARKER_VALUE)==0)
+                        else if ( tmptx.vout.size()<102 || ConstrainVout(tmptx.vout[100],1,cp->unspendableCCaddr,CC_MARKER_VALUE)==0)
                             return eval->Invalid("invalid marker vout for gatewaysbind!");
                         else if (tmprefcoin!=refcoin)
                             return eval->Invalid("refcoin different than in bind tx");
