@@ -1123,7 +1123,7 @@ int32_t main(int32_t argc,char **argv)
 
     openlog (NULL, LOG_CONS | LOG_NDELAY, LOG_USER);
     memset(&zeroid,0,sizeof(zeroid));
-    if ( argc < 6 )
+    if ( argc < 7 )
     {
         myprintf("usage: oraclefeed $ACNAME $ORACLETXID $MYPUBKEY $FORMAT $BINDTXID $STARTINGHEIGHT [refcoin_cli]\n");
         return(-1);
