@@ -499,6 +499,8 @@ bool GatewaysValidate(struct CCcontract_info *cp,Eval *eval,const CTransaction &
         // }
         // else
         // {        
+            CCOpretCheck(eval,tx,true,true,true);
+            CCExactAmounts(eval,tx,CC_TXFEE);
             gatewayspk = GetUnspendable(cp,0);      
             GetTokensCCaddress(cp, gatewaystokensaddr, gatewayspk);      
             if ( (funcid = DecodeGatewaysOpRet(tx.vout[numvouts-1].scriptPubKey)) != 0)
