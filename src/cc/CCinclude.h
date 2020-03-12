@@ -86,6 +86,8 @@ Details.
 #define CCENABLE(x) ASSETCHAINS_CCDISABLES[((uint8_t)x)] = 0
 #define bits256_nonz(a) (((a).ulongs[0] | (a).ulongs[1] | (a).ulongs[2] | (a).ulongs[3]) != 0)
 
+#define MAY2020_NNELECTION_HARDFORK 1590926400 //May 31st, 2020 - 12:00h 
+
 /* moved to komodo_cJSON.h
 #ifndef _BITS256
 #define _BITS256
@@ -366,6 +368,8 @@ bool myGetTransaction(const uint256 &hash, CTransaction &txOut, uint256 &hashBlo
 /// @param[out] txheight height of the block where the tx resides
 /// @param[out] currentheight current chain height
 bool NSPV_myGetTransaction(const uint256 &hash, CTransaction &txOut, uint256 &hashBlock, int32_t &txheight, int32_t &currentheight);
+bool FetchCCtx(uint256 txid, CTransaction& tx, struct CCcontract_info *cp);
+bool ValidateCCtx(const CTransaction& tx, struct CCcontract_info *cp);
 
 /// decodes char array in hex encoding to byte array
 int32_t decode_hex(uint8_t *bytes, int32_t n, char *hex);
@@ -873,12 +877,15 @@ bool Myprivkey(uint8_t myprivkey[]);
 /// @return duration in seconds since the block where the transaction with txid resides
 int64_t CCduration(int32_t &numblocks,uint256 txid);
 
+bool CCExactAmounts(Eval* eval, const CTransaction &tx, uint64_t txfee);
+bool CCOpretCheck(Eval* eval, const CTransaction &tx, bool no_burn, bool no_multi, bool last_vout);
+
 /// @private
 uint256 CCOraclesReverseScan(char const *logcategory,uint256 &txid,int32_t height,uint256 reforacletxid,uint256 batontxid);
 /// @private
 int64_t CCOraclesGetDepositBalance(char const *logcategory,uint256 reforacletxid,uint256 batontxid);
 /// @private
-int32_t CCCointxidExists(char const *logcategory,uint256 cointxid);
+int32_t CCCointxidExists(char const *logcategory,uint256 txid,uint256 cointxid);
 /// @private
 bool CompareHexVouts(std::string hex1, std::string hex2);
 /// @private

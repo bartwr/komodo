@@ -479,6 +479,7 @@ static const CRPCCommand vRPCCommands[] =
     { "channels",       "channelsinfo",      &channelsinfo,      true },
     { "channels",       "channelsopen",      &channelsopen,      true },
     { "channels",       "channelspayment",   &channelspayment,   true },
+    { "channels",       "channelsgeneratesecret",   &channelsgeneratesecret,   true },
     { "channels",       "channelsclose",     &channelsclose,      true },
     { "channels",       "channelsrefund",    &channelsrefund,    true },
 
@@ -535,7 +536,6 @@ static const CRPCCommand vRPCCommands[] =
     { "gateways",       "gatewaysinfo",      &gatewaysinfo,         true },
     { "gateways",       "gatewaysbind",      &gatewaysbind,         true },
     { "gateways",       "gatewaysdeposit",   &gatewaysdeposit,      true },
-    { "gateways",       "gatewaysclaim",     &gatewaysclaim,        true },
     { "gateways",       "gatewayswithdraw",  &gatewayswithdraw,     true },
     { "gateways",       "gatewayswithdrawsign",  &gatewayswithdrawsign,     true },
     { "gateways",       "gatewaysmarkdone",  &gatewaysmarkdone,     true },
@@ -579,6 +579,7 @@ static const CRPCCommand vRPCCommands[] =
     { "pegs",       "pegsfund",         &pegsfund,      true },
     { "pegs",       "pegsget",         &pegsget,        true },
     { "pegs",       "pegsredeem",         &pegsredeem,        true },
+    { "pegs",       "pegsclose",         &pegsclose,        true },
     { "pegs",       "pegsliquidate",         &pegsliquidate,        true },
     { "pegs",       "pegsexchange",         &pegsexchange,        true },
     { "pegs",       "pegsaccounthistory", &pegsaccounthistory,      true },

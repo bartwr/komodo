@@ -337,9 +337,11 @@ static const char *notaries_elected[NUM_KMD_SEASONS][NUM_KMD_NOTARIES][2] =
 #define KOMODO_BIT63SET(x) ((x) & ((uint64_t)1 << 63))
 #define KOMODO_VALUETOOBIG(x) ((x) > (uint64_t)10000000001*COIN)
 
-#define PRICES_DAYWINDOW ((3600*24/ASSETCHAINS_BLOCKTIME) + 1)
-// short period for testing:
-// #define PRICES_DAYWINDOW (7)
+#ifdef TESTMODE_PRICES
+    #define PRICES_DAYWINDOW (7)
+#else
+    #define PRICES_DAYWINDOW ((3600*24/ASSETCHAINS_BLOCKTIME) + 1)
+#endif
 
 extern uint8_t ASSETCHAINS_TXPOW,ASSETCHAINS_PUBLIC;
 extern int8_t ASSETCHAINS_ADAPTIVEPOW;
@@ -370,7 +372,7 @@ extern uint256 KOMODO_EARLYTXID;
 extern int32_t KOMODO_CONNECTING,KOMODO_CCACTIVATE,KOMODO_DEALERNODE,KOMODO_DEX_P2P;
 extern uint32_t ASSETCHAINS_CC;
 extern std::string CCerror,ASSETCHAINS_CCLIB;
-extern uint8_t ASSETCHAINS_CCDISABLES[256];
+extern uint8_t ASSETCHAINS_CCDISABLES[256],ASSETCHAINS_CCZEROTXFEE[256];
 
 extern int32_t USE_EXTERNAL_PUBKEY;
 extern std::string NOTARY_PUBKEY,NOTARY_ADDRESS;
@@ -433,7 +435,7 @@ CBlockIndex *komodo_blockindex(uint256 hash);
 CBlockIndex *komodo_chainactive(int32_t height);
 int32_t komodo_blockheight(uint256 hash);
 int64_t komodo_get_blocktime(uint256 hash);
-bool komodo_txnotarizedconfirmed(uint256 txid);
+bool komodo_txnotarizedconfirmed(uint256 txid,int32_t minconfirms=1);
 int32_t komodo_blockload(CBlock& block, CBlockIndex *pindex);
 uint32_t komodo_chainactive_timestamp();
 uint32_t GetLatestTimestamp(int32_t height);

@@ -488,20 +488,23 @@ bool Myprivkey(uint8_t myprivkey[])
     char coinaddr[64],checkaddr[64]; std::string strAddress; char *dest; int32_t i,n; CBitcoinAddress address; CKeyID keyID; CKey vchSecret; uint8_t buf33[33];
     if ( KOMODO_NSPV_SUPERLITE )
     {
-        if ( NSPV_logintime == 0 || time(NULL) > NSPV_logintime+NSPV_AUTOLOGOUT )
+        if ( NSPV_logintime != 0 && time(NULL) <= NSPV_logintime+NSPV_AUTOLOGOUT )
+        {
+            vchSecret = DecodeSecret(NSPV_wifstr);
+            memcpy(myprivkey,vchSecret.begin(),32);
+            //for (i=0; i<32; i++)
+            //    fprintf(stderr,"%02x",myprivkey[i]);
+            //fprintf(stderr," myprivkey %s\n",NSPV_wifstr);
+            memset((uint8_t *)vchSecret.begin(),0,32);
+            return true;
+        }
+        else if ( KOMODO_DEX_P2P == 0 )
         {
             fprintf(stderr,"need to be logged in to get myprivkey\n");
             return false;
         }
-        vchSecret = DecodeSecret(NSPV_wifstr);
-        memcpy(myprivkey,vchSecret.begin(),32);
-        //for (i=0; i<32; i++)
-        //    fprintf(stderr,"%02x",myprivkey[i]);
-        //fprintf(stderr," myprivkey %s\n",NSPV_wifstr);
-        memset((uint8_t *)vchSecret.begin(),0,32);
-        return true;
     }
-    if ( Getscriptaddress(coinaddr,CScript() << Mypubkey() << OP_CHECKSIG) != 0 )
+    if ( pwalletMain != 0 && Getscriptaddress(coinaddr,CScript() << Mypubkey() << OP_CHECKSIG) != 0 )
     {
         n = (int32_t)strlen(coinaddr);
         strAddress.resize(n+1);
@@ -529,9 +532,9 @@ bool Myprivkey(uint8_t myprivkey[])
                     else printf("mismatched privkey -> addr %s vs %s\n",checkaddr,coinaddr);
                 }
                 return(false);
-            }
+            } else fprintf(stderr,"(%p) cant find (%s) privkey\n",pwalletMain,coinaddr);
 #endif
-        }
+        } else fprintf(stderr,"cant find (%s) in wallet\n",coinaddr);
     }
     if ( KOMODO_DEX_P2P != 0 )
     {
@@ -654,17 +657,17 @@ int64_t CCOraclesGetDepositBalance(char const *logcategory,uint256 reforacletxid
 
 int32_t NSPV_coinaddr_inmempool(char const *logcategory,char *coinaddr,uint8_t CCflag);
 
-int32_t myIs_coinaddr_inmempoolvout(char const *logcategory,char *coinaddr)
+int32_t myIs_coinaddr_inmempoolvout(char const *logcategory,uint256 txid,char *coinaddr)
 {
     int32_t i,n; char destaddr[64];
     if ( KOMODO_NSPV_SUPERLITE )
-        return(NSPV_coinaddr_inmempool(logcategory,coinaddr,1));
+        return(NSPV_coinaddr_inmempool(logcategory,coinaddr,0));
     BOOST_FOREACH(const CTxMemPoolEntry &e,mempool.mapTx)
     {
         const CTransaction &tx = e.GetTx();
         if ( (n= tx.vout.size()) > 0 )
         {
-            const uint256 &txid = tx.GetHash();
+            if (txid == tx.GetHash()) continue;
             for (i=0; i<n; i++)
             {
                 Getscriptaddress(destaddr,tx.vout[i].scriptPubKey);
@@ -705,17 +708,17 @@ int32_t myGet_mempool_txs(std::vector<CTransaction> &txs,uint8_t evalcode,uint8_
     return(i);
 }
 
-int32_t CCCointxidExists(char const *logcategory,uint256 cointxid)
+int32_t CCCointxidExists(char const *logcategory,uint256 txid, uint256 cointxid)
 {
     char txidaddr[64]; std::string coin; int32_t numvouts; uint256 hashBlock;
     std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
     CCtxidaddr(txidaddr,cointxid);
-    SetCCtxids(addressIndex,txidaddr,true);
+    SetCCtxids(addressIndex,txidaddr,false);
     for (std::vector<std::pair<CAddressIndexKey, CAmount> >::const_iterator it=addressIndex.begin(); it!=addressIndex.end(); it++)
     {
         return(-1);
     }
-    return(myIs_coinaddr_inmempoolvout(logcategory,txidaddr));
+    return(myIs_coinaddr_inmempoolvout(logcategory,txid,txidaddr));
 }
 
 bool CompareHexVouts(std::string hex1, std::string hex2)
@@ -782,15 +785,16 @@ int32_t komodo_get_current_height()
     else return chainActive.LastTip()->GetHeight();
 }
 
-bool komodo_txnotarizedconfirmed(uint256 txid)
+bool komodo_txnotarizedconfirmed(uint256 txid, int32_t minconfirms)
 {
     char str[65];
-    int32_t confirms,notarized=0,txheight=0,currentheight=0;;
+    int32_t confirms,minimumconfirms,notarized=0,txheight=0,currentheight=0;;
     CTransaction tx;
     uint256 hashBlock;
     CBlockIndex *pindex;    
     char symbol[KOMODO_ASSETCHAIN_MAXLEN],dest[KOMODO_ASSETCHAIN_MAXLEN]; struct komodo_state *sp;
 
+    if (minconfirms==0) return (true);
     if ( KOMODO_NSPV_SUPERLITE )
     {
         if ( NSPV_myGetTransaction(txid,tx,hashBlock,txheight,currentheight) == 0 )
@@ -834,14 +838,15 @@ bool komodo_txnotarizedconfirmed(uint256 txid)
         }    
         confirms=1 + pindex->GetHeight() - txheight;
     }
-
+    if (minconfirms>1) minimumconfirms=minconfirms;
+    else minimumconfirms=MIN_NON_NOTARIZED_CONFIRMS;
     if ((sp= komodo_stateptr(symbol,dest)) != 0 && (notarized=sp->NOTARIZED_HEIGHT) > 0 && txheight > sp->NOTARIZED_HEIGHT)  notarized=0;            
 #ifdef TESTMODE           
     notarized=0;
 #endif //TESTMODE
     if (notarized>0 && confirms > 1)
         return (true);
-    else if (notarized==0 && confirms >= MIN_NON_NOTARIZED_CONFIRMS)
+    else if (notarized==0 && confirms >= minimumconfirms)
         return (true);
     return (false);
 }
