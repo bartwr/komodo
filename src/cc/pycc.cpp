@@ -11,6 +11,8 @@
 #include <univalue.h>
 #include "CCinclude.h"
 
+#include <vector>
+#include <map>
 
 
 Eval* getEval(PyObject* self)
@@ -271,7 +273,7 @@ UniValue PyccRunGlobalCCRpc(Eval* eval, UniValue params)
 
     if (PyUnicode_Check(out)) {
         long len;
-        char* resp_s = PyUnicode_AsUTF8AndSize(out, &len);
+        const char* resp_s = PyUnicode_AsUTF8AndSize(out, &len);
         result.read(resp_s);
     } else { // FIXME test case
         fprintf(stderr, "FIXME?\n");
@@ -303,7 +305,7 @@ bool PyccRunGlobalCCEval(Eval* eval, const CTransaction& txTo, unsigned int nIn,
         valid = eval->Valid();
     } else if (PyUnicode_Check(out)) {
         long len;
-        char* err_s = PyUnicode_AsUTF8AndSize(out, &len);
+        const char* err_s = PyUnicode_AsUTF8AndSize(out, &len);
         valid = eval->Invalid(std::string(err_s, len));
     } else {
         valid = eval->Error("PYCC validation returned invalid type. "
@@ -376,6 +378,7 @@ CScript MakeFauxImportOpret(std::vector<CTransaction> &txs, CBlockIndex* blockin
     std::string prevvalStr = prevblockJSON.write(0, 0);
     //char* prevblockChr = const_cast<char*> (prevvalStr.c_str());
 
+    std::map<uint8_t, UniValue> mapOprets;
     oprets.push_back("MakeState");
     oprets.push_back(prevvalStr);
     for (std::vector<CTransaction>::const_iterator it=txs.begin(); it!=txs.end(); it++)
@@ -383,22 +386,64 @@ CScript MakeFauxImportOpret(std::vector<CTransaction> &txs, CBlockIndex* blockin
         const CTransaction &tx = *it;
         for (std::vector<CTxIn>::const_iterator vit=tx.vin.begin(); vit!=tx.vin.end(); vit++){
             const CTxIn &vin = *vit;
-            if (tx.vout.back().scriptPubKey.IsOpReturn() && IsCCInput(vin.scriptSig))
+            if (tx.vout.size() > 0 && tx.vout.back().scriptPubKey.IsOpReturn() && IsCCInput(vin.scriptSig))
             {
-                oprets.push_back(HexStr(tx.vout.back().scriptPubKey.begin(), tx.vout.back().scriptPubKey.end()));
-                break;
+
+                std::vector<uint8_t> vevalcode;
+                auto findEval = [](CC *cond, struct CCVisitor _) {
+                    bool r = false; 
+
+                    if (cc_typeId(cond) == CC_Eval && cond->codeLength == 1) {
+                        ((std::vector<uint8_t>*)(_.context))->push_back(cond->code[0]);  // store eval code in cc_visitor context which is & of vector of unit8_t var
+                        r = true;
+                    }
+                    // false for a match, true for continue
+                    return 1;
+                };
+
+                CC *cond = GetCryptoCondition(vin.scriptSig);
+
+                if (cond) {
+                    CCVisitor visitor = { findEval, (uint8_t*)"", 0, &vevalcode };
+                    bool out = !cc_visit(cond, visitor);  // yes, inverted
+                    cc_free(cond);
+                    if (vevalcode.size() > 0)
+                    {
+                        // use evalcodes:
+                        printf("evalcode size=%d\n", vevalcode.size());
+                        for (auto const &e : vevalcode)  {
+                            if (mapOprets.find(e) == mapOprets.end())
+                                //mapOprets[e] = UniValue(UniValue::VARR);  // init first time
+                                mapOprets.emplace(e, UniValue(UniValue::VARR));  // init firs time 
+                            
+                            std::string strOpret = HexStr(tx.vout.back().scriptPubKey.begin(), tx.vout.back().scriptPubKey.end());
+                            const std::vector<UniValue> &vuni = mapOprets[e].getValues();
+                            if (std::find_if(vuni.begin(), vuni.end(), [&](UniValue el) { return el.getValStr() == strOpret; }) == vuni.end())
+                                mapOprets[e].push_back(strOpret);
+                        }
+                    }
+                }
+
+                //oprets.push_back(HexStr(tx.vout.back().scriptPubKey.begin(), tx.vout.back().scriptPubKey.end()));
+                // break;  // why break??
             }
         }
     }
     // this sends ["MakeState", "prevblockJSON", [cc_spend_oprets]]
-    resp = ExternalRunCCRpc(&eval, oprets);
+    std::vector<CScript> vresult;
+    for (auto const &m : mapOprets)
+    {
+        resp = ExternalRunCCRpc(&eval, m.second);
 
-    if (resp.empty()) return CScript();
+        if (resp.empty()) return CScript();
 
-    std::string valStr = resp.write(0, 0);
-    //char* valChr = const_cast<char*> (valStr.c_str());
+        std::string valStr = resp.write(0, 0);
+        //char* valChr = const_cast<char*> (valStr.c_str());
 
-    result = CScript() <<  OP_RETURN << E_MARSHAL(ss << valStr);
+        result = CScript() <<  OP_RETURN << E_MARSHAL(ss << valStr);
+        vresult.push_back(result);
+    }
+    // seems you need to declare the func return value as std::vector<CScript> and return vresult?
     return( result );
 }
 
@@ -436,7 +481,7 @@ bool PyccRunGlobalBlockEval(const CBlock& block, const CBlock& prevblock)
         valid = true;
     } else if (PyUnicode_Check(out)) {
         long len;
-        char* err_s = PyUnicode_AsUTF8AndSize(out, &len);
+        const char* err_s = PyUnicode_AsUTF8AndSize(out, &len);
         //valid = eval->Invalid(std::string(err_s, len));
         fprintf(stderr, "PYCC module returned string: %s \n", err_s);
         valid = false;
@@ -482,7 +527,7 @@ void PyccGlobalInit(std::string moduleName)
 
 
     ExternalRunCCEval = &PyccRunGlobalCCEval;
-    ExternalRunBlockEval = &PyccRunGlobalBlockEval;
+    //ExternalRunBlockEval = &PyccRunGlobalBlockEval;
     ExternalRunCCRpc = &PyccRunGlobalCCRpc;
 }
 
