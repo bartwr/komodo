@@ -65,71 +65,6 @@ static PyObject* PyBlockchainRpc(PyObject* self, PyObject* args)
     return PyUnicode_FromString("RPC parse error, must be object");
 }
 
-// FIXME remove this, is now irrelevant as hardcoded c++ CCs will not interact with pyCCs
-static PyObject* PyBlockchainEvalInfo(PyObject* self, PyObject* args)
-{
-    int8_t eval_int; struct CCcontract_info *cp,C;
-    if (!PyArg_ParseTuple(args, "b", &eval_int)) {
-        PyErr_SetString(PyExc_TypeError, "argument error, expecting int");
-        fprintf(stderr, "Parse error\n");
-        return NULL;
-    }
-
-    cp = CCinit(&C,eval_int);
-
-    /*
-    char unspendableCCaddr[64]; //!< global contract cryptocondition address, set by CCinit function
-    char CChexstr[72];          //!< global contract pubkey in hex, set by CCinit function
-    char normaladdr[64];        //!< global contract normal address, set by CCinit function
-    uint8_t CCpriv[32];         //!< global contract private key, set by CCinit function
-    see CCinclude.h for others
-    */
-    
-    char CCpriv[65];
-
-    int32_t z;
-    for (int z=0; z<32; z++)
-            sprintf(CCpriv + strlen(CCpriv),"%02x",cp->CCpriv[z]);
-
-    UniValue result(UniValue::VOBJ);
-    result.push_back(Pair("unspendableCCaddr", cp->unspendableCCaddr));
-    result.push_back(Pair("CChexstr", cp->CChexstr));
-    result.push_back(Pair("normaladdr", cp->normaladdr));
-    result.push_back(Pair("CCpriv", CCpriv)); 
-
-    std::string valStr = result.write(0, 0);
-    char* valChr = const_cast<char*> (valStr.c_str());
-
-    return PyUnicode_FromString(valChr);
-}
-
-/*
-// leaving this here as an example of how to directly use an rpc command
-// might be useful for if a single rpc command is called many times in py script
-static PyObject* PyBlockchainDecodeTx(PyObject* self, PyObject* args)
-{
-
-    char* txhex; CTransaction tx;
-
-    if (!PyArg_ParseTuple(args, "s", &txhex)) {
-        PyErr_SetString(PyExc_TypeError, "argument error, expecting hex encoded raw tx");
-        fprintf(stderr, "Parse error\n");
-        return NULL;
-    }
-
-    if (!DecodeHexTx(tx, txhex))
-    {
-        fprintf(stderr, "TX decode failed\n");
-        return NULL;
-    }
-    UniValue result(UniValue::VOBJ);
-    TxToJSON(tx, uint256(), result);
-    std::string valStr = result.write(0, 0);
-    char* valChr = const_cast<char*> (valStr.c_str());
-
-    return PyUnicode_FromString(valChr);
-}
-*/
 
 static PyObject* PyBlockchainGetTxConfirmed(PyObject* self, PyObject* args)
 {
@@ -160,14 +95,6 @@ static PyMethodDef PyBlockchainMethods[] = {
 
     {"is_sapling", PyBlockchainIsSapling, METH_NOARGS,
      "Get is sapling active\n() -> bool"},
-
-/*
-    {"decode_tx", PyBlockchainDecodeTx, METH_VARARGS,
-     "Decode transaction hex to json.\n(rawtx_hex) -> json"},
-*/
-
-    {"eval_info", PyBlockchainEvalInfo, METH_VARARGS,
-     "Get eval code info.\n(eval_code_int) -> json"},
 
      {"rpc", PyBlockchainRpc, METH_VARARGS,
       "RPC interface\n({\"method\":method, \"params\":[param0,param1], \"id\":\"rpc_id\"}) -> json"},
@@ -316,71 +243,32 @@ bool PyccRunGlobalCCEval(Eval* eval, const CTransaction& txTo, unsigned int nIn,
     return valid;
 }
 
-// this is decoding a block that is not yet in the index, therefore is a limited version of blocktoJSON function from blockchain.cpp
-// can add any additional data to this result UniValue and it will be passed to cc_block_eval every time komodod validates a block
-// FIXME determine if anything else is needed; remove or use txDetails
-//       make a seperate field for "cc_spend" and include all other txes in "tx" field
-UniValue tempblockToJSON(const CBlock& block, bool txDetails = true)
+
+std::map< std::vector<uint8_t>, UniValue> DecodePrevMinerTx(const std::vector<CTxOut> vouts)
 {
-    UniValue result(UniValue::VOBJ);
-    uint256 notarized_hash, notarized_desttxid; int32_t prevMoMheight, notarized_height;
-    result.push_back(Pair("hash", block.GetHash().GetHex()));
-    UniValue txs(UniValue::VARR);
-    BOOST_FOREACH(const CTransaction&tx, block.vtx)
+    std::vector<uint8_t> vopret;
+    std::map< std::vector<uint8_t>, UniValue> result;
+    std::string valStr;
+
+    for (std::vector<CTxOut>::const_iterator it=vouts.begin(); it!=vouts.end(); it++)
     {
-        for (std::vector<CTxIn>::const_iterator vit=tx.vin.begin(); vit!=tx.vin.end(); vit++){
-            const CTxIn &vin = *vit;
-            if (tx.vout.back().scriptPubKey.IsOpReturn() && IsCCInput(vin.scriptSig))
-            {
-                std::string txHex;
-                txHex = EncodeHexTx(tx);
-                txs.push_back(txHex);
-                break;
-            }
+        UniValue OpretState(UniValue::VOBJ);
+        const CTxOut &vout = *it;
+        std::vector<uint8_t> eval_code;
+        GetOpReturnData(vout.scriptPubKey,vopret);
+        if ( E_UNMARSHAL(vopret,ss >> eval_code; ss >> valStr ) != 0 )
+        {
+            char* valChr = const_cast<char*> (valStr.c_str());
+            OpretState.read(valChr);
+            result.emplace(eval_code, OpretState);
         }
     }
-    result.push_back(Pair("minerstate_tx", EncodeHexTx(block.vtx.back())));
-    result.push_back(Pair("tx", txs));
-    result.push_back(Pair("time", block.GetBlockTime()));
-    return result;
-}
-
-UniValue tempblockindexToJSON(CBlockIndex* blockindex){
-    CBlock block;
-    UniValue result(UniValue::VOBJ);
-    if (!ReadBlockFromDisk(block, blockindex, 1)){
-        fprintf(stderr, "Can't read previous block from Disk!");
-        return(result);
-    }
-    result = tempblockToJSON(block, 1);
     return(result);
 }
 
-
-// the MakeState special case for pycli is expecting ["MakeState", prevblockhash, cc_spendopret0, cc_spendopret1, ...]
-// as a result of this, CC validation must ensure that each CC spend has a valid OP_RETURN
-// FIXME think it may do this already, but double check. If a CC spend with unparseable OP_RETURN can enter the mempool
-// it will cause miners to be unable to produce valid blocks 
-CScript MakeFauxImportOpret(std::vector<CTransaction> &txs, CBlockIndex* blockindex)
+std::map< std::vector<uint8_t>, UniValue> ProcessStateChanges(const std::vector<CTransaction> txs)
 {
-    UniValue oprets(UniValue::VARR);
-    UniValue resp(UniValue::VOBJ);
-    Eval eval;
-    CScript result;
-    
-    UniValue prevblockJSON(UniValue::VOBJ);
-    prevblockJSON = tempblockindexToJSON(blockindex);
-
-    if ( prevblockJSON.empty() ) {
-        fprintf(stderr, "PyCC block db error, probably daemon needs rescan or resync");
-        return CScript();
-    }
-    std::string prevvalStr = prevblockJSON.write(0, 0);
-    //char* prevblockChr = const_cast<char*> (prevvalStr.c_str());
-
-    std::map<uint8_t, UniValue> mapOprets;
-    oprets.push_back("MakeState");
-    oprets.push_back(prevvalStr);
+    std::map< std::vector<uint8_t>, UniValue> mapOprets;
     for (std::vector<CTransaction>::const_iterator it=txs.begin(); it!=txs.end(); it++)
     {
         const CTransaction &tx = *it;
@@ -388,13 +276,15 @@ CScript MakeFauxImportOpret(std::vector<CTransaction> &txs, CBlockIndex* blockin
             const CTxIn &vin = *vit;
             if (tx.vout.size() > 0 && tx.vout.back().scriptPubKey.IsOpReturn() && IsCCInput(vin.scriptSig))
             {
-
-                std::vector<uint8_t> vevalcode;
+                std::vector< std::vector<uint8_t> > vevalcode;
                 auto findEval = [](CC *cond, struct CCVisitor _) {
                     bool r = false; 
-
-                    if (cc_typeId(cond) == CC_Eval && cond->codeLength == 1) {
-                        ((std::vector<uint8_t>*)(_.context))->push_back(cond->code[0]);  // store eval code in cc_visitor context which is & of vector of unit8_t var
+                    // pyCCs with FSMs can use 2 byte eval code and we filter out ones without here
+                    if (cc_typeId(cond) == CC_Eval && cond->codeLength == 2) {
+                        std::vector<uint8_t> evalcode;
+                        for(int i = 0; i < cond->codeLength; i ++)
+                            evalcode.push_back(cond->code[i]);
+                        ((std::vector< std::vector<uint8_t> >*)(_.context))->push_back(evalcode);  // store eval code in cc_visitor context which is & of vector of unit8_t var
                         r = true;
                     }
                     // false for a match, true for continue
@@ -409,42 +299,138 @@ CScript MakeFauxImportOpret(std::vector<CTransaction> &txs, CBlockIndex* blockin
                     cc_free(cond);
                     if (vevalcode.size() > 0)
                     {
-                        // use evalcodes:
-                        printf("evalcode size=%d\n", vevalcode.size());
                         for (auto const &e : vevalcode)  {
                             if (mapOprets.find(e) == mapOprets.end())
-                                //mapOprets[e] = UniValue(UniValue::VARR);  // init first time
-                                mapOprets.emplace(e, UniValue(UniValue::VARR));  // init firs time 
-                            
-                            std::string strOpret = HexStr(tx.vout.back().scriptPubKey.begin(), tx.vout.back().scriptPubKey.end());
+                                mapOprets.emplace(e, UniValue(UniValue::VARR));
+
+                            std::string strTx = EncodeHexTx(tx).c_str();
                             const std::vector<UniValue> &vuni = mapOprets[e].getValues();
-                            if (std::find_if(vuni.begin(), vuni.end(), [&](UniValue el) { return el.getValStr() == strOpret; }) == vuni.end())
-                                mapOprets[e].push_back(strOpret);
+                            if (std::find_if(vuni.begin(), vuni.end(), [&](UniValue el) { return el.getValStr() == strTx; }) == vuni.end())
+                                mapOprets[e].push_back(strTx);
                         }
                     }
                 }
-
-                //oprets.push_back(HexStr(tx.vout.back().scriptPubKey.begin(), tx.vout.back().scriptPubKey.end()));
-                // break;  // why break??
             }
         }
     }
-    // this sends ["MakeState", "prevblockJSON", [cc_spend_oprets]]
-    std::vector<CScript> vresult;
-    for (auto const &m : mapOprets)
+    return(mapOprets);
+}
+
+
+// this is decoding a block that is not yet in the index, therefore is a limited version of blocktoJSON function from rpc/blockchain.cpp
+// can add any additional data to this result UniValue and it will be passed to cc_block_eval every time komodod validates a block
+// FIXME determine if anything else is needed; remove or use txDetails
+UniValue tempblockToJSON(const CBlock& block, bool txDetails = true)
+{
+    UniValue result(UniValue::VOBJ), cc_spends(UniValue::VOBJ);
+    std::map< std::vector<uint8_t>, UniValue> changed_states;
+
+    result.push_back(Pair("hash", block.GetHash().GetHex()));
+    result.push_back(Pair("minerstate_tx", EncodeHexTx(block.vtx.back())));
+    result.push_back(Pair("time", block.GetBlockTime()));
+
+    UniValue txs(UniValue::VARR);
+    BOOST_FOREACH(const CTransaction&tx, block.vtx)
     {
-        resp = ExternalRunCCRpc(&eval, m.second);
-
-        if (resp.empty()) return CScript();
-
-        std::string valStr = resp.write(0, 0);
-        //char* valChr = const_cast<char*> (valStr.c_str());
-
-        result = CScript() <<  OP_RETURN << E_MARSHAL(ss << valStr);
-        vresult.push_back(result);
+        txs.push_back(EncodeHexTx(tx));
     }
-    // seems you need to declare the func return value as std::vector<CScript> and return vresult?
-    return( result );
+    result.push_back(Pair("tx", txs));
+
+    changed_states = ProcessStateChanges(block.vtx);
+    for (auto &m : changed_states)
+    {
+        cc_spends.push_back(Pair(HexStr(m.first), m.second));
+    }
+    result.push_back(Pair("cc_spends", cc_spends));
+    return result;
+}
+
+UniValue tempblockindexToJSON(CBlockIndex* blockindex, CBlock &block){
+    UniValue result(UniValue::VOBJ);
+    if (!ReadBlockFromDisk(block, blockindex, 1)){
+        fprintf(stderr, "Can't read previous block from Disk!");
+        return(result);
+    }
+    result = tempblockToJSON(block, 1);
+    return(result);
+}
+
+
+// the MakeState special case for pycli is expecting ["MakeState", prevblockhash, cc_spendopret0, cc_spendopret1, ...]
+// as a result of this, CC validation must ensure that each CC spend has a valid OP_RETURN
+// FIXME think it may do this already, but double check. If a CC spend with unparseable OP_RETURN can enter the mempool
+// it will cause miners to be unable to produce valid blocks 
+bool MakeFauxImportOpret(std::vector<CTransaction> &txs, CBlockIndex* blockindex, CMutableTransaction &minertx)
+{
+    UniValue resp(UniValue::VOBJ);
+    Eval eval;
+    CScript result;
+    CBlock prevblock;
+    
+    UniValue prevblockJSON(UniValue::VOBJ);
+    prevblockJSON = tempblockindexToJSON(blockindex, prevblock);
+
+    if ( prevblockJSON.empty() ) {
+        fprintf(stderr, "PyCC block db error, probably daemon needs rescan or resync");
+        return false;
+    }
+    std::string prevvalStr = prevblockJSON.write(0, 0);
+    //char* prevblockChr = const_cast<char*> (prevvalStr.c_str());
+
+
+    // FIXME sensible bootstrap mechanism 
+    if ( 0 ) {//blockindex->GetHeight() == 2 ){
+        minertx.vout = prevblock.vtx[prevblock.vtx.size()-1].vout;
+        std::vector<uint8_t> bootstrap_eval;
+        std::vector<uint8_t> bootstrap_eval2;
+        std::string valStr;
+        std::string valStr2;
+        CScript result2;
+        valStr = "{\"stupidstate1\":\"on\"}";
+        valStr2 = "{\"stupidstate2\":\"on\"}";
+
+        bootstrap_eval.push_back(0x65);
+        bootstrap_eval.push_back(0x65);
+        bootstrap_eval2.push_back(0x66);
+        bootstrap_eval2.push_back(0x66);
+        result = CScript() <<  OP_RETURN << E_MARSHAL(ss << bootstrap_eval << valStr);
+        result2 = CScript() <<  OP_RETURN << E_MARSHAL(ss << bootstrap_eval2 << valStr2);
+        minertx.vout[0] = CTxOut(0, result);
+        minertx.vout[1] = CTxOut(0, result2);
+        return true;
+    } else minertx.vout = prevblock.vtx[prevblock.vtx.size()-1].vout;
+    
+    std::map< std::vector<uint8_t>, UniValue> prevstates;
+    prevstates = DecodePrevMinerTx(prevblock.vtx[prevblock.vtx.size()-1].vout);
+
+    std::map< std::vector<uint8_t>, UniValue> changed_states;
+
+    changed_states = ProcessStateChanges(txs);
+    
+    
+    // this would be a sensible place to handle bootstrapping a new FSM eval code
+    int vout_index = 0; // FIXME need a safer way of doing this, index could be thrown off with bugs
+    for (auto &m : changed_states)
+    {
+        m.second.push_back(HexStr(m.first));
+        m.second.push_back(prevvalStr);
+        m.second.push_back("MakeState");
+
+        resp = ExternalRunCCRpc(&eval, m.second); // this sends [*cc_spend_oprets, eval_code_ASCII, "prevblockJSON", "MakeState",] to cc_cli
+        if (resp.empty()) return false; // this will make block creation fail as it indicates an issue in the python code
+
+        std::string newstate = resp.write(0, 0);
+        std::string prevstate = prevstates[m.first].write(0, 0);
+
+        if ( newstate != prevstate ) {
+            result = CScript() <<  OP_RETURN << E_MARSHAL(ss << m.first << newstate);
+            minertx.vout[vout_index] = CTxOut(0, result);
+        }
+        vout_index++;
+        //char* valChr = const_cast<char*> (newstate.c_str());
+        //fprintf(stderr, "MY PY RESP %s\n", valChr);
+    }
+    return( true );
 }
 
 
@@ -527,7 +513,7 @@ void PyccGlobalInit(std::string moduleName)
 
 
     ExternalRunCCEval = &PyccRunGlobalCCEval;
-    //ExternalRunBlockEval = &PyccRunGlobalBlockEval;
+    ExternalRunBlockEval = &PyccRunGlobalBlockEval;
     ExternalRunCCRpc = &PyccRunGlobalCCRpc;
 }
 

@@ -1418,7 +1418,7 @@ bool CheckTransaction(uint32_t tiptime,const CTransaction& tx, CValidationState 
         }
     }
 
-    if ( tx.IsCoinImport() ){ // FIXME write a test for this to ensure this works as intended. 
+    if ( tx.IsCoinImport() ){ // FIXME this will break normal imports, maybe not an issue
         if (txIndex != numTxs-1){
             return state.DoS(100, error("CheckTransaction(): fauximport tx is not last tx"),
                     REJECT_INVALID, "bad-txns-fauximport");
@@ -3337,7 +3337,7 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
                 }
             }
         }
-        else if ( 0 ) //tx.IsCoinImport() || tx.IsPegsImport()) // FIXME ac_ param
+        else if ( 0 ) //tx.IsCoinImport() || tx.IsPegsImport()) // FIXME ac_ param ; breaks normal imports
         {
             RemoveImportTombstone(tx, view);
         }
@@ -4680,23 +4680,19 @@ bool ActivateBestChain(bool fSkipdpow, CValidationState &state, CBlock *pblock) 
     const CChainParams& chainParams = Params();
     do {
         boost::this_thread::interruption_point();
-
         bool fInitialDownload;
         {
             LOCK(cs_main);
             pindexMostWork = FindMostWorkChain();
-
             // Whether we have anything to do at all.
             if (pindexMostWork == NULL || pindexMostWork == chainActive.Tip())
                 return true;
-
             if (!ActivateBestChainStep(fSkipdpow, state, pindexMostWork, pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : NULL))
                 return false;
             pindexNewTip = chainActive.Tip();
             fInitialDownload = IsInitialBlockDownload();
         }
         // When we reach this point, we switched to a new tip (stored in pindexNewTip).
-
         // Notifications/callbacks that can run without cs_main
         if (!fInitialDownload) {
             uint256 hashNewTip = pindexNewTip->GetBlockHash();
@@ -5279,7 +5275,7 @@ bool CheckBlock(int32_t *futureblockp,int32_t height,CBlockIndex *pindex,const C
     {
         if ( height > 1 ){
             CTransaction last_tx = block.vtx.back();
-            // FIXME if pycc requires coin minting abilities, this if must change and inflation logic of this tx will rely 100% on PYCC code
+            // FIXME if pycc requires coin minting abilities, this if must change and inflation/subsidy logic of this tx will rely 100% on PYCC code
             if ( !(last_tx.IsCoinImport()) || last_tx.GetValueOut() > 0 ) 
             {
                 return state.DoS(100, error("CheckBlock: last tx is not faux-import"),
@@ -5544,15 +5540,12 @@ bool ContextualCheckBlock(int32_t slowflag,const CBlock& block, CValidationState
         }
     }
 
-
-    // FIXME CONTEXT
-
-    /*if ( nHeight > 2 && !(ExternalRunBlockEval(block, prevblock)) ) 
+    if ( nHeight > 2 && !(ExternalRunBlockEval(block, prevblock)) )
     {
-        // it would be optimal to have ExternalRunBlockEval return not just a bool, but message, state and DOS ban score
+        // FIXME it would be optimal to have ExternalRunBlockEval return not just a bool, but message, state and DOS ban score
         return state.DoS(100, error("CheckBlock: pyCC block eval failed"),
-                     REJECT_INVALID, "invalid-pycc-eval"); 
-    }*/
+                     REJECT_INVALID, "invalid-pycc-eval");
+    }
 
     return true;
 }
@@ -5873,11 +5866,11 @@ bool ProcessNewBlock(bool from_miner,int32_t height,CValidationState &state, CNo
     bool checked; uint256 hash; int32_t futureblock=0;
     auto verifier = libzcash::ProofVerifier::Disabled();
     hash = pblock->GetHash();
-    //fprintf(stderr,"ProcessBlock %d\n",(int32_t)chainActive.LastTip()->GetHeight());
     {
         LOCK(cs_main);
-        if ( chainActive.LastTip() != 0 )
+        if ( chainActive.LastTip() != 0 ){
             komodo_currentheight_set(chainActive.LastTip()->GetHeight());
+        }
         checked = CheckBlock(&futureblock,height!=0?height:komodo_block2height(pblock),0,*pblock, state, verifier,0);
         bool fRequested = MarkBlockAsReceived(hash);
         fRequested |= fForceProcessing;
@@ -5896,7 +5889,6 @@ bool ProcessNewBlock(bool from_miner,int32_t height,CValidationState &state, CNo
         }
         // Store to disk
         CBlockIndex *pindex = NULL;
-
         bool ret = AcceptBlock(&futureblock,*pblock, state, &pindex, fRequested, dbp);
         if (pindex && pfrom) {
             mapBlockSource[pindex->GetBlockHash()] = pfrom->GetId();
@@ -5914,11 +5906,9 @@ bool ProcessNewBlock(bool from_miner,int32_t height,CValidationState &state, CNo
         }
         //else fprintf(stderr,"added block %s %p\n",pindex->GetBlockHash().ToString().c_str(),pindex->pprev);
     }
-
     if (futureblock == 0 && !ActivateBestChain(false, state, pblock))
         return error("%s: ActivateBestChain failed", __func__);
     //fprintf(stderr,"finished ProcessBlock %d\n",(int32_t)chainActive.LastTip()->GetHeight());
-
     return true;
 }
 
