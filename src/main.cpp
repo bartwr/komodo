@@ -3337,7 +3337,7 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
                 }
             }
         }
-        else if ( 0 ) //tx.IsCoinImport() || tx.IsPegsImport()) // FIXME ac_ param ; breaks normal imports
+        else if ( ASSETCHAINS_PYCC_FSM == 0 && (tx.IsCoinImport() || tx.IsPegsImport()) ) // FIXME ac_ param ; breaks normal imports
         {
             RemoveImportTombstone(tx, view);
         }
@@ -5271,7 +5271,7 @@ bool CheckBlock(int32_t *futureblockp,int32_t height,CBlockIndex *pindex,const C
 
     // this will be a literal transaction, so we can easily store pycc-specific block data 
     // is a very special case as this allows pycc to mint coins, be careful 
-    if (1) // make an ac_ param  FIXME 
+    if ( ASSETCHAINS_PYCC_FSM > 0 ) // make an ac_ param  FIXME 
     {
         if ( height > 1 ){
             CTransaction last_tx = block.vtx.back();
@@ -5531,16 +5531,7 @@ bool ContextualCheckBlock(int32_t slowflag,const CBlock& block, CValidationState
         }
     }
 
-    // FIXME if ac_ param
-    CBlock prevblock;
-    if (nHeight > 2 ){
-        if (!ReadBlockFromDisk(prevblock, pindexPrev, 1)){
-            fprintf(stderr, "PYCC Can't read previous block from Disk!");
-            return(0);
-        }
-    }
-
-    if ( nHeight > 2 && !(ExternalRunBlockEval(block, prevblock)) )
+    if ( nHeight > 2 && !(ExternalRunBlockEval(block, pindexPrev)) )
     {
         // FIXME it would be optimal to have ExternalRunBlockEval return not just a bool, but message, state and DOS ban score
         return state.DoS(100, error("CheckBlock: pyCC block eval failed"),

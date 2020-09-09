@@ -329,6 +329,7 @@ UniValue tempblockToJSON(const CBlock& block, bool txDetails = true)
     result.push_back(Pair("minerstate_tx", EncodeHexTx(block.vtx.back())));
     result.push_back(Pair("time", block.GetBlockTime()));
 
+
     UniValue txs(UniValue::VARR);
     BOOST_FOREACH(const CTransaction&tx, block.vtx)
     {
@@ -352,6 +353,7 @@ UniValue tempblockindexToJSON(CBlockIndex* blockindex, CBlock &block){
         return(result);
     }
     result = tempblockToJSON(block, 1);
+    result.push_back(Pair("height", blockindex->GetHeight()));
     return(result);
 }
 
@@ -374,29 +376,30 @@ bool MakeFauxImportOpret(std::vector<CTransaction> &txs, CBlockIndex* blockindex
         fprintf(stderr, "PyCC block db error, probably daemon needs rescan or resync");
         return false;
     }
-    std::string prevvalStr = prevblockJSON.write(0, 0);
+    std::string prevblockStr = prevblockJSON.write(0, 0);
     //char* prevblockChr = const_cast<char*> (prevvalStr.c_str());
 
 
     // FIXME sensible bootstrap mechanism 
     if ( 0 ) {//blockindex->GetHeight() == 2 ){
         minertx.vout = prevblock.vtx[prevblock.vtx.size()-1].vout;
+        minertx.vout.resize(1);
         std::vector<uint8_t> bootstrap_eval;
-        std::vector<uint8_t> bootstrap_eval2;
+        //std::vector<uint8_t> bootstrap_eval2;
         std::string valStr;
-        std::string valStr2;
-        CScript result2;
-        valStr = "{\"stupidstate1\":\"on\"}";
-        valStr2 = "{\"stupidstate2\":\"on\"}";
+        //std::string valStr2;
+        //CScript result2;
+        valStr = "{\"doom\":\"submit\"}";
+        //valStr2 = "{\"stupidstate2\":\"on\"}";
 
-        bootstrap_eval.push_back(0x65);
-        bootstrap_eval.push_back(0x65);
-        bootstrap_eval2.push_back(0x66);
-        bootstrap_eval2.push_back(0x66);
+        bootstrap_eval.push_back(0x64);
+        bootstrap_eval.push_back(0x64);
+        //bootstrap_eval2.push_back(0x66);
+        //bootstrap_eval2.push_back(0x66);
         result = CScript() <<  OP_RETURN << E_MARSHAL(ss << bootstrap_eval << valStr);
-        result2 = CScript() <<  OP_RETURN << E_MARSHAL(ss << bootstrap_eval2 << valStr2);
+        //result2 = CScript() <<  OP_RETURN << E_MARSHAL(ss << bootstrap_eval2 << valStr2);
         minertx.vout[0] = CTxOut(0, result);
-        minertx.vout[1] = CTxOut(0, result2);
+        //minertx.vout[1] = CTxOut(0, result2);
         return true;
     } else minertx.vout = prevblock.vtx[prevblock.vtx.size()-1].vout;
     
@@ -408,15 +411,22 @@ bool MakeFauxImportOpret(std::vector<CTransaction> &txs, CBlockIndex* blockindex
     changed_states = ProcessStateChanges(txs);
     
     
+    // this will ensure that MakeState is done for every eval code even if a CC spend did not happen within this block
+    // is neccesary for "special_events" function 
+    for (auto &e : prevstates)  {
+        if (changed_states.find(e.first) == changed_states.end())
+            changed_states.emplace(e.first, UniValue(UniValue::VARR));
+    }
+
     // this would be a sensible place to handle bootstrapping a new FSM eval code
     int vout_index = 0; // FIXME need a safer way of doing this, index could be thrown off with bugs
     for (auto &m : changed_states)
     {
         m.second.push_back(HexStr(m.first));
-        m.second.push_back(prevvalStr);
+        m.second.push_back(prevblockStr);
         m.second.push_back("MakeState");
 
-        resp = ExternalRunCCRpc(&eval, m.second); // this sends [*cc_spend_oprets, eval_code_ASCII, "prevblockJSON", "MakeState",] to cc_cli
+        resp = ExternalRunCCRpc(&eval, m.second); // this sends [*cc_spends, eval_code_ASCII, "prevblockJSON", "MakeState",] to cc_cli
         if (resp.empty()) return false; // this will make block creation fail as it indicates an issue in the python code
 
         std::string newstate = resp.write(0, 0);
@@ -436,18 +446,39 @@ bool MakeFauxImportOpret(std::vector<CTransaction> &txs, CBlockIndex* blockindex
 
 
 
-bool PyccRunGlobalBlockEval(const CBlock& block, const CBlock& prevblock)
+bool PyccRunGlobalBlockEval(const CBlock& block, CBlockIndex* prevblock_index)
 {
     UniValue blockJSON(UniValue::VOBJ);
     UniValue prevblockJSON(UniValue::VOBJ);
 
+    CBlock prevblock;
+    prevblockJSON = tempblockindexToJSON(prevblock_index, prevblock);
 
-
-    prevblockJSON = tempblockToJSON(prevblock); // FIXME this could maybe use typical blockToJSON instead, gives more data
+    //prevblockJSON = tempblockToJSON(prevblock); // FIXME this could maybe use typical blockToJSON instead, gives more data
     std::string prevvalStr = prevblockJSON.write(0, 0);
     char* prevblockChr = const_cast<char*> (prevvalStr.c_str());
 
     blockJSON = tempblockToJSON(block);
+
+
+
+
+
+    std::map< std::vector<uint8_t>, UniValue> prev_states;
+//result.push_back(Pair("cc_spends", cc_spends));
+    prev_states = ProcessStateChanges(prevblock.vtx);
+    // is neccesary for "special_events" function 
+    //for (auto &e : prevstates)  {
+      //  if (blockJSON.(e.first) == changed_states.end())
+        //    changed_states.emplace(e.first, UniValue(UniValue::VARR));
+    //}
+    //const std::string huuuh = "cc_spends";
+    //fprintf(stderr, "WHAT %d \n", blockJSON(huuuh).exists());
+
+
+
+
+
     std::string valStr = blockJSON.write(0, 0);
     char* blockChr = const_cast<char*> (valStr.c_str());
 

@@ -583,6 +583,9 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-ac_cclib", _("Cryptoconditions dynamically loadable library"));
 #if ENABLE_PYCC
     strUsage += HelpMessageOpt("-ac_pycc", _("Provide a Python module for validating CryptoConditions"));
+    strUsage += HelpMessageOpt("-ac_pycc_FSM", _("Activate pyCC module FSMs for miners"));
+    strUsage += HelpMessageOpt("-ac_pycc_magic", _("Whether ac_pycc should affect magic of the chain; can be used for introducing pyCC modules to an existing chain."));
+
 #endif
     strUsage += HelpMessageOpt("-ac_ccenable", _("Cryptoconditions to enable"));
     strUsage += HelpMessageOpt("-ac_ccactivate", _("Block height to enable Cryptoconditions"));

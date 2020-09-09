@@ -382,6 +382,7 @@ extern std::string DONATION_PUBKEY;
 extern uint8_t ASSETCHAINS_PRIVATE;
 #if ENABLE_PYCC
 extern std::string ASSETCHAINS_PYCC;
+extern uint8_t ASSETCHAINS_PYCC_FSM;
 #endif
 extern int32_t USE_EXTERNAL_PUBKEY;
 extern char NOTARYADDRS[64][64];

@@ -1784,6 +1784,7 @@ void komodo_args(char *argv0)
     ASSETCHAINS_PRIVATE = GetArg("-ac_private",0);
 	ASSETCHAINS_PYCC = GetArg("-ac_pycc","");
     ASSETCHAINS_PYCC_MAGIC = GetArg("-ac_pyccmagic",0);
+    ASSETCHAINS_PYCC_FSM = GetArg("-ac_pyccFSM",0); // will not affect magic for now, may need to come back to this
 #if ENABLE_PYCC
 	if (!ASSETCHAINS_PYCC.empty()) PyccGlobalInit(ASSETCHAINS_PYCC);
 #endif

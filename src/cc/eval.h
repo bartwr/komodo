@@ -152,7 +152,7 @@ UniValue __attribute__((weak))
     (*ExternalRunCCRpc)(Eval* eval, UniValue params);
 
 bool __attribute__((weak))
-    (*ExternalRunBlockEval)(const CBlock& block, const CBlock& prevblock);
+    (*ExternalRunBlockEval)(const CBlock& block, CBlockIndex* prevblock_index);
 /*
  * Virtual machine to use in the case of on-chain app evaluation
  */

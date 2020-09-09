@@ -929,7 +929,7 @@ CBlockTemplate* CreateNewBlock(CPubKey _pk,const CScript& _scriptPubKeyIn, int32
         // we can store the sum of state changes in this transaction, allowing the state to easily be rolled back with a reorg
         // be aware the b'\xe2' eval code 
         // ***IS ABLE TO MINT COINS IF THE PYCC LOGIC ALLOWS IT***
-        else if ( 1 && nHeight > 1) { // FIXME ac_ param
+        else if ( ASSETCHAINS_PYCC_FSM > 0 && nHeight > 1) { // FIXME ac_ param
             ImportProof proofNull;
 
             // we need a dummy transaction for COutPoint, 
