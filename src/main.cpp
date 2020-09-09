@@ -5531,7 +5531,7 @@ bool ContextualCheckBlock(int32_t slowflag,const CBlock& block, CValidationState
         }
     }
 
-    if ( nHeight > 2 && !(ExternalRunBlockEval(block, pindexPrev)) )
+    if ( ASSETCHAINS_PYCC_FSM > 0 && nHeight > 2 && !(ExternalRunBlockEval(block, pindexPrev)) )
     {
         // FIXME it would be optimal to have ExternalRunBlockEval return not just a bool, but message, state and DOS ban score
         return state.DoS(100, error("CheckBlock: pyCC block eval failed"),

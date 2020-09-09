@@ -537,7 +537,7 @@ void PyccGlobalInit(std::string moduleName)
         exit(1);
     }
 
-    if (!pyccGlobalBlockEval) { // FIXME if ac_ param
+    if ( ASSETCHAINS_PYCC_FSM > 0 && !pyccGlobalBlockEval) { // FIXME if ac_ param
         printf("Python module \"%s\" does not export \"cc_block_eval\" or not callable\n", &moduleName[0]);
         exit(1);
     }
