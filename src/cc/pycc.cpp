@@ -525,7 +525,7 @@ void PyccGlobalInit(std::string moduleName)
     }
 
     pyccGlobalEval = PyccGetFunc(pyccModule, "cc_eval");
-    pyccGlobalBlockEval = PyccGetFunc(pyccModule, "cc_block_eval");
+    
     pyccGlobalRpc = PyccGetFunc(pyccModule, "cc_cli");
 
     if (!pyccGlobalEval) {
@@ -537,9 +537,13 @@ void PyccGlobalInit(std::string moduleName)
         exit(1);
     }
 
-    if ( ASSETCHAINS_PYCC_FSM > 0 && !pyccGlobalBlockEval) { // FIXME if ac_ param
-        printf("Python module \"%s\" does not export \"cc_block_eval\" or not callable\n", &moduleName[0]);
-        exit(1);
+    if ( ASSETCHAINS_PYCC_FSM > 0) {
+        pyccGlobalBlockEval = PyccGetFunc(pyccModule, "cc_block_eval");
+        if ( !pyccGlobalBlockEval ){
+            printf("Python module \"%s\" does not export \"cc_block_eval\" or not callable\n", &moduleName[0]);
+            exit(1);
+        } // FIXME if ac_ param
+
     }
 
 
