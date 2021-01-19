@@ -136,7 +136,7 @@ void EraseOrphansFor(NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
  * Returns true if there are nRequired or more blocks of minVersion or above
  * in the last Consensus::Params::nMajorityWindow blocks, starting at pstart and going backwards.
  */
-static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned nRequired, const Consensus::Params& consensusParams);
+static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned N, unsigned M);
 static void CheckBlockIndex();
 
 /** Constant stuff for coinbase transactions we create: */
@@ -3543,6 +3543,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY;
 
+    // activate Antara soft fork if 10 of the last 12 blocks are version 5 
+    if ( IsSuperMajority(5, pindex->pprev, 10, 12) ) {
+        flags |= SCRIPT_VERIFY_ANTARA1;
+    }
+
     // DERSIG (BIP66) is also always enforced, but does not have a flag.
 
     CBlockUndo blockundo;
@@ -5673,10 +5678,12 @@ bool AcceptBlock(int32_t *futureblockp,CBlock& block, CValidationState& state, C
     return false;
 }
 
-static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned nRequired, const Consensus::Params& consensusParams)
+// Was dead code from BIP65 and BIP66; tweaking it as komodod rarely uses chainparams
+// returns true if nRequired of the last nRequiredFrom blocks had at least minVersion nVersion
+static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned nRequired, unsigned nRequiredFrom)
 {
     unsigned int nFound = 0;
-    for (int i = 0; i < consensusParams.nMajorityWindow && nFound < nRequired && pstart != NULL; i++)
+    for (int i = 0; i < nRequiredFrom && nFound < nRequired && pstart != NULL; i++)
     {
         if (pstart->nVersion >= minVersion)
             ++nFound;
@@ -5684,6 +5691,7 @@ static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned 
     }
     return (nFound >= nRequired);
 }
+
 
 void komodo_currentheight_set(int32_t height);
 
@@ -5766,6 +5774,7 @@ CBlockIndex *oldkomodo_ensure(CBlock *pblock, uint256 hash)
      }*/
     return(pindex);
 }
+
 
 bool ProcessNewBlock(bool from_miner,int32_t height,CValidationState &state, CNode* pfrom, CBlock* pblock, bool fForceProcessing, CDiskBlockPos *dbp)
 {

@@ -102,6 +102,10 @@ enum
     //
     // See BIP65 for details.
     SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY = (1U << 9),
+
+    // testing Antara softfork mode - Alright
+    SCRIPT_VERIFY_ANTARA1 = (1U << 10),
+
 };
 
 bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror);
