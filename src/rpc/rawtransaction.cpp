@@ -845,6 +845,13 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp, const CPubKey&
             std::vector<unsigned char> data = ParseHexV(sendTo[name_].getValStr(),"Data");
             CTxOut out(0, CScript() << OP_RETURN << data);
             rawTx.vout.push_back(out);
+        } else if ( name_ == "condition") {
+            UniValue condJSON = sendTo[name_].get_obj();
+            std::string valStr = condJSON.write(0, 0);
+            char* valChr = const_cast<char*> (valStr.c_str());
+            static char ccjsonerr[1000] = "\0";
+            CC *mycond = cc_conditionFromJSONString(valChr, ccjsonerr);
+            rawTx.vout.push_back(CTxOut(0, CCPubKey(mycond)));
         } else {
             destination = DecodeDestination(name_);
             if (IsValidDestination(destination)) {
