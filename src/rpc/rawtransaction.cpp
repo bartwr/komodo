@@ -1168,6 +1168,22 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
         EnsureWalletIsUnlocked();
 #endif
 
+    // Use the approximate release height if it is greater so offline nodes 
+    // have a better estimation of the current height and will be more likely to
+    // determine the correct consensus branch ID.  Regtest mode ignores release height.
+    int chainHeight = chainActive.Height() + 1;
+
+    // Grab the current consensus branch ID
+    auto consensusBranchId = CurrentEpochBranchId(chainHeight, Params().GetConsensus());
+
+    if (params.size() > 4 && !params[4].isNull()) {
+        consensusBranchId = ParseHexToUInt32(params[4].get_str());
+        if (!IsConsensusBranchId(consensusBranchId)) {
+            throw runtime_error(params[4].get_str() + " is not a valid consensus branch id");
+        }
+    }
+
+
     // Add previous txouts given in the RPC call:
     if (params.size() > 1 && !params[1].isNull()) {
         UniValue prevTxs = params[1].get_array();
@@ -1178,44 +1194,92 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
 
             UniValue prevOut = p.get_obj();
 
-            RPCTypeCheckObj(prevOut, boost::assign::map_list_of("txid", UniValue::VSTR)("vout", UniValue::VNUM)("scriptPubKey", UniValue::VSTR));
-
+            UniValue cond = find_value(prevOut, "condition");
+            RPCTypeCheckObj(prevOut, boost::assign::map_list_of("txid", UniValue::VSTR)("vout", UniValue::VNUM));
             uint256 txid = ParseHashO(prevOut, "txid");
 
             int nOut = find_value(prevOut, "vout").get_int();
             if (nOut < 0)
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "vout must be positive");
 
-            vector<unsigned char> pkData(ParseHexO(prevOut, "scriptPubKey"));
-            CScript scriptPubKey(pkData.begin(), pkData.end());
 
-            {
-                CCoinsModifier coins = view.ModifyCoins(txid);
-                if (coins->IsAvailable(nOut) && coins->vout[nOut].scriptPubKey != scriptPubKey) {
-                    string err("Previous output scriptPubKey mismatch:\n");
-                    err = err + ScriptToAsmStr(coins->vout[nOut].scriptPubKey) + "\nvs:\n"+
-                        ScriptToAsmStr(scriptPubKey);
-                    throw JSONRPCError(RPC_DESERIALIZATION_ERROR, err);
-                }
-                if ((unsigned int)nOut >= coins->vout.size())
-                    coins->vout.resize(nOut+1);
-                coins->vout[nOut].scriptPubKey = scriptPubKey;
-                coins->vout[nOut].nValue = 0;
-                if (prevOut.exists("amount")) {
-                    coins->vout[nOut].nValue = AmountFromValue(find_value(prevOut, "amount"));
-                }
-            }
+            if ( cond.isNull() ) {
 
-            // if redeemScript given and not using the local wallet (private keys
-            // given), add redeemScript to the tempKeystore so it can be signed:
-            if (fGivenKeys && scriptPubKey.IsPayToScriptHash()) {
-                RPCTypeCheckObj(prevOut, boost::assign::map_list_of("txid", UniValue::VSTR)("vout", UniValue::VNUM)("scriptPubKey", UniValue::VSTR)("redeemScript",UniValue::VSTR));
-                UniValue v = find_value(prevOut, "redeemScript");
-                if (!v.isNull()) {
-                    vector<unsigned char> rsData(ParseHexV(v, "redeemScript"));
-                    CScript redeemScript(rsData.begin(), rsData.end());
-                    tempKeystore.AddCScript(redeemScript);
+                RPCTypeCheckObj(prevOut, boost::assign::map_list_of("scriptPubKey", UniValue::VSTR));
+
+                vector<unsigned char> pkData(ParseHexO(prevOut, "scriptPubKey"));
+                CScript scriptPubKey(pkData.begin(), pkData.end());
+
+                {
+                    CCoinsModifier coins = view.ModifyCoins(txid);
+                    if (coins->IsAvailable(nOut) && coins->vout[nOut].scriptPubKey != scriptPubKey) {
+                        string err("Previous output scriptPubKey mismatch:\n");
+                        err = err + ScriptToAsmStr(coins->vout[nOut].scriptPubKey) + "\nvs:\n"+
+                            ScriptToAsmStr(scriptPubKey);
+                        throw JSONRPCError(RPC_DESERIALIZATION_ERROR, err);
+                    }
+                    if ((unsigned int)nOut >= coins->vout.size())
+                        coins->vout.resize(nOut+1);
+                    coins->vout[nOut].scriptPubKey = scriptPubKey;
+                    coins->vout[nOut].nValue = 0;
+                    if (prevOut.exists("amount")) {
+                        coins->vout[nOut].nValue = AmountFromValue(find_value(prevOut, "amount"));
+                    }
                 }
+
+                // if redeemScript given and not using the local wallet (private keys
+                // given), add redeemScript to the tempKeystore so it can be signed:
+                if (fGivenKeys && scriptPubKey.IsPayToScriptHash()) {
+                    RPCTypeCheckObj(prevOut, boost::assign::map_list_of("txid", UniValue::VSTR)("vout", UniValue::VNUM)("scriptPubKey", UniValue::VSTR)("redeemScript",UniValue::VSTR));
+                    UniValue v = find_value(prevOut, "redeemScript");
+                    if (!v.isNull()) {
+                        vector<unsigned char> rsData(ParseHexV(v, "redeemScript"));
+                        CScript redeemScript(rsData.begin(), rsData.end());
+                        tempKeystore.AddCScript(redeemScript);
+                    }
+                }
+            } else {
+                // generic condition signer for Antara - Alright
+                // TODO it should be possible to do scriptPubKeys like...
+                // OP_DUP OP_HASH160 <HASH> OP_EQUALVERIFY OP_CHECKSIGVERIFY <COND_HASH> OP_CHECKCRYPTOCONDITIONX
+                // eg, a normal bitcoin script with additional Antara validation appeneded to it
+                // note: OP_VERIFY would need to happen prior to additional Antara valiadtion
+                RPCTypeCheckObj(prevOut, boost::assign::map_list_of("txid", UniValue::VSTR)("vout", UniValue::VNUM)("condition", UniValue::VOBJ));
+
+
+                // FIXME Alright -
+                //    Given the txid and index, we can know amount if confirmed
+                //        const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+                //        const CAmount& amount = coins->vout[txin.prevout.n].nValue;
+                RPCTypeCheckObj(prevOut, boost::assign::map_list_of("amount", UniValue::VNUM));
+
+                CAmount prevAmount = AmountFromValue(find_value(prevOut, "amount"));
+                // FIXME Alright - probably an intended way of doing this, research scott's initial commits
+                std::string valStr = cond.write(0, 0);
+                char* valChr = const_cast<char*> (valStr.c_str());
+                static char ccjsonerr[1000] = "\0";
+                CC *mycond = cc_conditionFromJSONString(valChr, ccjsonerr);
+
+                // "{}" or similar was provided 
+                if ( mycond == NULL ) throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Empty(NULL) condition provided");
+
+                PrecomputedTransactionData txdata(mergedTx);
+                uint256 sighash = SignatureHash(CCPubKey(mycond), mergedTx, idx, SIGHASH_ALL,prevAmount,consensusBranchId, &txdata);
+
+                UniValue keys = params[2].get_array();
+
+                std::vector<UniValue> key_entries = keys.getValues();
+
+                // sign with every key provided
+                // FIXME Alright - integrate wallet support here
+                //     we can check if we have a privkey of each secp256k1 node
+                for (unsigned int i = 0; i < key_entries.size(); i++) {
+                    CKey priv = DecodeSecret(key_entries[i].get_str().c_str());
+                    const uint8_t *priv_ptr = priv.begin();
+                    cc_signTreeSecp256k1Msg32(mycond, priv_ptr, (const unsigned char*)&sighash);
+                }
+
+                mergedTx.vin[idx].scriptSig = CCSig(mycond);
             }
         }
     }
@@ -1245,20 +1309,6 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
     }
 
     bool fHashSingle = ((nHashType & ~SIGHASH_ANYONECANPAY) == SIGHASH_SINGLE);
-    // Use the approximate release height if it is greater so offline nodes 
-    // have a better estimation of the current height and will be more likely to
-    // determine the correct consensus branch ID.  Regtest mode ignores release height.
-    int chainHeight = chainActive.Height() + 1;
-
-    // Grab the current consensus branch ID
-    auto consensusBranchId = CurrentEpochBranchId(chainHeight, Params().GetConsensus());
-
-    if (params.size() > 4 && !params[4].isNull()) {
-        consensusBranchId = ParseHexToUInt32(params[4].get_str());
-        if (!IsConsensusBranchId(consensusBranchId)) {
-            throw runtime_error(params[4].get_str() + " is not a valid consensus branch id");
-        }
-    } 
     
     // Script verification errors
     UniValue vErrors(UniValue::VARR);
@@ -1306,7 +1356,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
                 sigdata = CombineSignatures(prevPubKey, TransactionSignatureChecker(&txConst, i, amount), sigdata, DataFromTransaction(txv, i), consensusBranchId);
             }
             
-            UpdateTransaction(mergedTx, i, sigdata);
+            //UpdateTransaction(mergedTx, i, sigdata);
             
             ScriptError serror = SCRIPT_ERR_OK;
             if (!VerifyScript(txin.scriptSig, prevPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, TransactionSignatureChecker(&txConst, i, amount), consensusBranchId, &serror)) {
