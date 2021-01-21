@@ -1356,7 +1356,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
                 sigdata = CombineSignatures(prevPubKey, TransactionSignatureChecker(&txConst, i, amount), sigdata, DataFromTransaction(txv, i), consensusBranchId);
             }
             
-            //UpdateTransaction(mergedTx, i, sigdata);
+            UpdateTransaction(mergedTx, i, sigdata);
             
             ScriptError serror = SCRIPT_ERR_OK;
             if (!VerifyScript(txin.scriptSig, prevPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, TransactionSignatureChecker(&txConst, i, amount), consensusBranchId, &serror)) {
