@@ -847,11 +847,23 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp, const CPubKey&
             rawTx.vout.push_back(out);
         } else if ( name_ == "condition") {
             UniValue condJSON = sendTo[name_].get_obj();
+
+            CAmount nAmount = AmountFromValue(find_value(condJSON, "amount"));
+
+            // we are limited to 520 bytes per push
+            // if we need more than this, we can do
+            // <data> OP_DROP <more_data> OP_DROP <even_more> OP_DROP
+            CScript data;
+            UniValue op_drop_data = find_value(condJSON, "data");
+            if ( !op_drop_data.isNull() ) {
+                data << ParseHex(op_drop_data.get_str()) << OP_DROP;
+            }
+
             std::string valStr = condJSON.write(0, 0);
             char* valChr = const_cast<char*> (valStr.c_str());
             static char ccjsonerr[1000] = "\0";
             CC *mycond = cc_conditionFromJSONString(valChr, ccjsonerr);
-            rawTx.vout.push_back(CTxOut(0, CCPubKey(mycond)));
+            rawTx.vout.push_back(CTxOut(nAmount, CCPubKey(mycond) + data));
         } else {
             destination = DecodeDestination(name_);
             if (IsValidDestination(destination)) {
@@ -1183,7 +1195,6 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
         }
     }
 
-
     // Add previous txouts given in the RPC call:
     if (params.size() > 1 && !params[1].isNull()) {
         UniValue prevTxs = params[1].get_array();
@@ -1355,9 +1366,10 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
             BOOST_FOREACH(const CMutableTransaction& txv, txVariants) {
                 sigdata = CombineSignatures(prevPubKey, TransactionSignatureChecker(&txConst, i, amount), sigdata, DataFromTransaction(txv, i), consensusBranchId);
             }
-            
-            UpdateTransaction(mergedTx, i, sigdata);
-            
+
+            // Do not update if Antara signature already created
+            if ( mergedTx.vin[i].scriptSig == CScript() ) UpdateTransaction(mergedTx, i, sigdata);
+
             ScriptError serror = SCRIPT_ERR_OK;
             if (!VerifyScript(txin.scriptSig, prevPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, TransactionSignatureChecker(&txConst, i, amount), consensusBranchId, &serror)) {
                 TxInErrorToJSON(txin, vErrors, ScriptErrorString(serror));
