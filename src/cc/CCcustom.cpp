@@ -16,8 +16,6 @@
 #include "key_io.h"
 #include "CCinclude.h"
 #include "CCassets.h"
-#include "CCauction.h"
-#include "CClotto.h"
 #include "CCfsm.h"
 #include "CCchannels.h"
 #include "CCOracles.h"
@@ -64,17 +62,6 @@ uint8_t AssetsCCpriv[32] = { 0x9b, 0x17, 0x66, 0xe5, 0x82, 0x66, 0xac, 0xb6, 0xb
 #undef FUNCNAME
 #undef EVALCODE
 
-// Lotto
-#define FUNCNAME IsLottoInput
-#define EVALCODE EVAL_LOTTO
-const char *LottoCCaddr = "RNXZxgyWSAE6XS3qGnTaf5dVNCxnYzhPrg";
-const char *LottoNormaladdr = "RLW6hhRqBZZMBndnyPv29Yg3krh6iBYCyg";
-char LottoCChexstr[67] = { "03f72d2c4db440df1e706502b09ca5fec73ffe954ea1883e4049e98da68690d98f" };
-uint8_t LottoCCpriv[32] = { 0xb4, 0xac, 0xc2, 0xd9, 0x67, 0x34, 0xd7, 0x58, 0x80, 0x4e, 0x25, 0x55, 0xc0, 0x50, 0x66, 0x84, 0xbb, 0xa2, 0xe7, 0xc0, 0x39, 0x17, 0xb4, 0xc5, 0x07, 0xb7, 0x3f, 0xca, 0x07, 0xb0, 0x9a, 0xeb };
-#include "CCcustom.inc"
-#undef FUNCNAME
-#undef EVALCODE
-
 // Finite State Machine
 #define FUNCNAME IsFSMInput
 #define EVALCODE EVAL_FSM
@@ -82,17 +69,6 @@ const char *FSMCCaddr = "RUKTbLBeKgHkm3Ss4hKZP3ikuLW1xx7B2x";
 const char *FSMNormaladdr = "RWSHRbxnJYLvDjpcQ2i8MekgP6h2ctTKaj";
 char FSMCChexstr[67] = { "039b52d294b413b07f3643c1a28c5467901a76562d8b39a785910ae0a0f3043810" };
 uint8_t FSMCCpriv[32] = { 0x11, 0xe1, 0xea, 0x3e, 0xdb, 0x36, 0xf0, 0xa8, 0xc6, 0x34, 0xe1, 0x21, 0xb8, 0x02, 0xb9, 0x4b, 0x12, 0x37, 0x8f, 0xa0, 0x86, 0x23, 0x50, 0xb2, 0x5f, 0xe4, 0xe7, 0x36, 0x0f, 0xda, 0xae, 0xfc };
-#include "CCcustom.inc"
-#undef FUNCNAME
-#undef EVALCODE
-
-// Auction
-#define FUNCNAME IsAuctionInput
-#define EVALCODE EVAL_AUCTION
-const char *AuctionCCaddr = "RL4YPX7JYG3FnvoPqWF2pn3nQknH5NWEwx";
-const char *AuctionNormaladdr = "RFtVDNmdTZBTNZdmFRbfBgJ6LitgTghikL";
-char AuctionCChexstr[67] = { "037eefe050c14cb60ae65d5b2f69eaa1c9006826d729bc0957bdc3024e3ca1dbe6" };
-uint8_t AuctionCCpriv[32] = { 0x8c, 0x1b, 0xb7, 0x8c, 0x02, 0xa3, 0x9d, 0x21, 0x28, 0x59, 0xf5, 0xea, 0xda, 0xec, 0x0d, 0x11, 0xcd, 0x38, 0x47, 0xac, 0x0b, 0x6f, 0x19, 0xc0, 0x24, 0x36, 0xbf, 0x1c, 0x0a, 0x06, 0x31, 0xfb };
 #include "CCcustom.inc"
 #undef FUNCNAME
 #undef EVALCODE
@@ -266,14 +242,6 @@ struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
             cp->validate = AssetsValidate;
             cp->ismyvin = IsAssetsInput;
             break;
-        case EVAL_LOTTO:
-            strcpy(cp->unspendableCCaddr,LottoCCaddr);
-            strcpy(cp->normaladdr,LottoNormaladdr);
-            strcpy(cp->CChexstr,LottoCChexstr);
-            memcpy(cp->CCpriv,LottoCCpriv,32);
-            cp->validate = LottoValidate;
-            cp->ismyvin = IsLottoInput;
-            break;
         case EVAL_FSM:
             strcpy(cp->unspendableCCaddr,FSMCCaddr);
             strcpy(cp->normaladdr,FSMNormaladdr);
@@ -281,14 +249,6 @@ struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
             memcpy(cp->CCpriv,FSMCCpriv,32);
             cp->validate = FSMValidate;
             cp->ismyvin = IsFSMInput;
-            break;
-        case EVAL_AUCTION:
-            strcpy(cp->unspendableCCaddr,AuctionCCaddr);
-            strcpy(cp->normaladdr,AuctionNormaladdr);
-            strcpy(cp->CChexstr,AuctionCChexstr);
-            memcpy(cp->CCpriv,AuctionCCpriv,32);
-            cp->validate = AuctionValidate;
-            cp->ismyvin = IsAuctionInput;
             break;
         case EVAL_CHANNELS:
             strcpy(cp->unspendableCCaddr,ChannelsCCaddr);
