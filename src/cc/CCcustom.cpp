@@ -16,7 +16,6 @@
 #include "key_io.h"
 #include "CCinclude.h"
 #include "CCassets.h"
-#include "CCfsm.h"
 #include "CCchannels.h"
 #include "CCOracles.h"
 #include "CCPrices.h"
@@ -58,17 +57,6 @@ const char *AssetsCCaddr = "RGKRjeTBw4LYFotSDLT6RWzMHbhXri6BG6";
 const char *AssetsNormaladdr = "RFYE2yL3KknWdHK6uNhvWacYsCUtwzjY3u";
 char AssetsCChexstr[67] = { "02adf84e0e075cf90868bd4e3d34a03420e034719649c41f371fc70d8e33aa2702" };
 uint8_t AssetsCCpriv[32] = { 0x9b, 0x17, 0x66, 0xe5, 0x82, 0x66, 0xac, 0xb6, 0xba, 0x43, 0x83, 0x74, 0xf7, 0x63, 0x11, 0x3b, 0xf0, 0xf3, 0x50, 0x6f, 0xd9, 0x6b, 0x67, 0x85, 0xf9, 0x7a, 0xf0, 0x54, 0x4d, 0xb1, 0x30, 0x77 };
-#include "CCcustom.inc"
-#undef FUNCNAME
-#undef EVALCODE
-
-// Finite State Machine
-#define FUNCNAME IsFSMInput
-#define EVALCODE EVAL_FSM
-const char *FSMCCaddr = "RUKTbLBeKgHkm3Ss4hKZP3ikuLW1xx7B2x";
-const char *FSMNormaladdr = "RWSHRbxnJYLvDjpcQ2i8MekgP6h2ctTKaj";
-char FSMCChexstr[67] = { "039b52d294b413b07f3643c1a28c5467901a76562d8b39a785910ae0a0f3043810" };
-uint8_t FSMCCpriv[32] = { 0x11, 0xe1, 0xea, 0x3e, 0xdb, 0x36, 0xf0, 0xa8, 0xc6, 0x34, 0xe1, 0x21, 0xb8, 0x02, 0xb9, 0x4b, 0x12, 0x37, 0x8f, 0xa0, 0x86, 0x23, 0x50, 0xb2, 0x5f, 0xe4, 0xe7, 0x36, 0x0f, 0xda, 0xae, 0xfc };
 #include "CCcustom.inc"
 #undef FUNCNAME
 #undef EVALCODE
@@ -241,14 +229,6 @@ struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
             memcpy(cp->CCpriv,AssetsCCpriv,32);
             cp->validate = AssetsValidate;
             cp->ismyvin = IsAssetsInput;
-            break;
-        case EVAL_FSM:
-            strcpy(cp->unspendableCCaddr,FSMCCaddr);
-            strcpy(cp->normaladdr,FSMNormaladdr);
-            strcpy(cp->CChexstr,FSMCChexstr);
-            memcpy(cp->CCpriv,FSMCCpriv,32);
-            cp->validate = FSMValidate;
-            cp->ismyvin = IsFSMInput;
             break;
         case EVAL_CHANNELS:
             strcpy(cp->unspendableCCaddr,ChannelsCCaddr);
