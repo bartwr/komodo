@@ -5584,7 +5584,6 @@ int32_t verus_staked(CBlock *pBlock, CMutableTransaction &txNew, uint32_t &nBits
 }
 
 
-#include "../cc/CCfaucet.h"
 #include "../cc/CCassets.h"
 #include "../cc/CCrewards.h"
 #include "../cc/CCfsm.h"
@@ -6146,21 +6145,6 @@ UniValue auctionaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
     if ( params.size() == 1 )
         pubkey = ParseHex(params[0].get_str().c_str());
     return(CCaddress(cp,(char *)"Auction",pubkey));
-}
-
-UniValue faucetaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    struct CCcontract_info *cp,C; std::vector<unsigned char> pubkey;
-    int error;
-    cp = CCinit(&C,EVAL_FAUCET);
-    if ( fHelp || params.size() > 1 )
-        throw runtime_error("faucetaddress [pubkey]\n");
-    error = ensure_CCrequirements(cp->evalcode);
-    if ( error < 0 )
-        throw runtime_error(strprintf("to use CC contracts, you need to launch daemon with valid -pubkey= for an address in your wallet. ERR=%d\n", error));
-    if ( params.size() == 1 )
-        pubkey = ParseHex(params[0].get_str().c_str());
-    return(CCaddress(cp,(char *)"Faucet",pubkey));
 }
 
 UniValue rewardsaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
@@ -7173,98 +7157,6 @@ UniValue FSMinfo(const UniValue& params, bool fHelp, const CPubKey& mypk)
         throw runtime_error(CC_REQUIREMENTS_MSG);
     FSMtxid = Parseuint256((char *)params[0].get_str().c_str());
     return(FSMInfo(FSMtxid));
-}
-
-UniValue faucetinfo(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    uint256 fundingtxid;
-    if ( fHelp || params.size() != 0 )
-        throw runtime_error("faucetinfo\n");
-    if ( ensure_CCrequirements(EVAL_FAUCET) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    return(FaucetInfo());
-}
-
-UniValue faucetfund(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); int64_t funds; std::string hex;
-    if ( fHelp || params.size() != 1 )
-        throw runtime_error("faucetfund amount\n");
-    funds = atof(params[0].get_str().c_str()) * COIN + 0.00000000499999;
-    if ( (0) && KOMODO_NSPV_SUPERLITE )
-    {
-        char coinaddr[64]; struct CCcontract_info *cp,C; CTxOut v;
-        cp = CCinit(&C,EVAL_FAUCET);
-        v = MakeCC1vout(EVAL_FAUCET,funds,GetUnspendable(cp,0));
-        Getscriptaddress(coinaddr,CScript() << ParseHex(HexStr(pubkey2pk(Mypubkey()))) << OP_CHECKSIG);
-        return(NSPV_spend(coinaddr,(char *)HexStr(v.scriptPubKey.begin()+1,v.scriptPubKey.end()-1).c_str(),funds));
-    }
-    if ( ensure_CCrequirements(EVAL_FAUCET) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-
-    //const CKeyStore& keystore = *pwalletMain;
-    //LOCK2(cs_main, pwalletMain->cs_wallet);
-
-    bool lockWallet = false;
-    if (!mypk.IsValid())   // if mypk is not set then it is a local call, use local wallet in AddNormalInputs
-        lockWallet = true;
-
-    if (funds > 0) 
-    {
-        if (lockWallet)
-        {
-            ENTER_CRITICAL_SECTION(cs_main);
-            ENTER_CRITICAL_SECTION(pwalletMain->cs_wallet);
-        }
-        result = FaucetFund(mypk, 0,(uint64_t) funds);
-        if (lockWallet)
-        {
-            LEAVE_CRITICAL_SECTION(pwalletMain->cs_wallet);
-            LEAVE_CRITICAL_SECTION(cs_main);
-        }
-
-        if ( result[JSON_HEXTX].getValStr().size() > 0 )
-        {
-            result.push_back(Pair("result", "success"));
-            //result.push_back(Pair("hex", hex));
-        } else ERR_RESULT("couldnt create faucet funding transaction");
-    } else ERR_RESULT( "funding amount must be positive");
-    return(result);
-}
-
-UniValue faucetget(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); std::string hex;
-    if ( fHelp || params.size() !=0 )
-        throw runtime_error("faucetget\n");
-    if ( ensure_CCrequirements(EVAL_FAUCET) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-
-    bool lockWallet = false;
-    if (!mypk.IsValid())   // if mypk is not set then it is a local call, use wallet in AddNormalInputs (see check for this there)
-        lockWallet = true;
-
-    //const CKeyStore& keystore = *pwalletMain;
-    //LOCK2(cs_main, pwalletMain->cs_wallet);
-
-    if (lockWallet)
-    {
-        // use this instead LOCK2 because we need conditional wallet lock
-        ENTER_CRITICAL_SECTION(cs_main);
-        ENTER_CRITICAL_SECTION(pwalletMain->cs_wallet);
-    }
-    result = FaucetGet(mypk, 0);
-    if (lockWallet)
-    {
-        LEAVE_CRITICAL_SECTION(pwalletMain->cs_wallet);
-        LEAVE_CRITICAL_SECTION(cs_main);
-    }
-
-    if (result[JSON_HEXTX].getValStr().size() > 0 ) {
-        result.push_back(Pair("result", "success"));
-        //result.push_back(Pair("hex", hex));
-    } else ERR_RESULT("couldnt create faucet get transaction");
-    return(result);
 }
 
 uint32_t pricesGetParam(UniValue param) {

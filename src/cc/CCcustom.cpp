@@ -16,7 +16,6 @@
 #include "key_io.h"
 #include "CCinclude.h"
 #include "CCassets.h"
-#include "CCfaucet.h"
 #include "CCrewards.h"
 #include "CCauction.h"
 #include "CClotto.h"
@@ -66,17 +65,6 @@ uint8_t AssetsCCpriv[32] = { 0x9b, 0x17, 0x66, 0xe5, 0x82, 0x66, 0xac, 0xb6, 0xb
 #undef FUNCNAME
 #undef EVALCODE
 
-// Faucet
-#define FUNCNAME IsFaucetInput
-#define EVALCODE EVAL_FAUCET
-const char *FaucetCCaddr = "R9zHrofhRbub7ER77B7NrVch3A63R39GuC";
-const char *FaucetNormaladdr = "RKQV4oYs4rvxAWx1J43VnT73rSTVtUeckk";
-char FaucetCChexstr[67] = { "03682b255c40d0cde8faee381a1a50bbb89980ff24539cb8518e294d3a63cefe12" };
-uint8_t FaucetCCpriv[32] = { 0xd4, 0x4f, 0xf2, 0x31, 0x71, 0x7d, 0x28, 0x02, 0x4b, 0xc7, 0xdd, 0x71, 0xa0, 0x39, 0xc4, 0xbe, 0x1a, 0xfe, 0xeb, 0xc2, 0x46, 0xda, 0x76, 0xf8, 0x07, 0x53, 0x3d, 0x96, 0xb4, 0xca, 0xa0, 0xe9 };
-#include "CCcustom.inc"
-#undef FUNCNAME
-#undef EVALCODE
-
 // Rewards
 #define FUNCNAME IsRewardsInput
 #define EVALCODE EVAL_REWARDS
@@ -117,17 +105,6 @@ const char *AuctionCCaddr = "RL4YPX7JYG3FnvoPqWF2pn3nQknH5NWEwx";
 const char *AuctionNormaladdr = "RFtVDNmdTZBTNZdmFRbfBgJ6LitgTghikL";
 char AuctionCChexstr[67] = { "037eefe050c14cb60ae65d5b2f69eaa1c9006826d729bc0957bdc3024e3ca1dbe6" };
 uint8_t AuctionCCpriv[32] = { 0x8c, 0x1b, 0xb7, 0x8c, 0x02, 0xa3, 0x9d, 0x21, 0x28, 0x59, 0xf5, 0xea, 0xda, 0xec, 0x0d, 0x11, 0xcd, 0x38, 0x47, 0xac, 0x0b, 0x6f, 0x19, 0xc0, 0x24, 0x36, 0xbf, 0x1c, 0x0a, 0x06, 0x31, 0xfb };
-#include "CCcustom.inc"
-#undef FUNCNAME
-#undef EVALCODE
-
-// Heir
-#define FUNCNAME IsHeirInput
-#define EVALCODE EVAL_HEIR
-const char *HeirCCaddr = "RDVHcSekmXgeYBqRupNTmqo3Rn8QRXNduy";
-const char *HeirNormaladdr = "RTPwUjKYECcGn6Y4KYChLhgaht1RSU4jwf";
-char HeirCChexstr[67] = { "03c91bef3d7cc59c3a89286833a3446b29e52a5e773f738a1ad2b09785e5f4179e" };
-uint8_t HeirCCpriv[32] = { 0x9d, 0xa1, 0xf8, 0xf7, 0xba, 0x0a, 0x91, 0x36, 0x89, 0x9a, 0x86, 0x30, 0x63, 0x20, 0xd7, 0xdf, 0xaa, 0x35, 0xe3, 0x99, 0x32, 0x2b, 0x63, 0xc0, 0x66, 0x9c, 0x93, 0xc4, 0x5e, 0x9d, 0xb9, 0xce };
 #include "CCcustom.inc"
 #undef FUNCNAME
 #undef EVALCODE
@@ -300,14 +277,6 @@ struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
             memcpy(cp->CCpriv,AssetsCCpriv,32);
             cp->validate = AssetsValidate;
             cp->ismyvin = IsAssetsInput;
-            break;
-        case EVAL_FAUCET:
-            strcpy(cp->unspendableCCaddr,FaucetCCaddr);
-            strcpy(cp->normaladdr,FaucetNormaladdr);
-            strcpy(cp->CChexstr,FaucetCChexstr);
-            memcpy(cp->CCpriv,FaucetCCpriv,32);
-            cp->validate = FaucetValidate;
-            cp->ismyvin = IsFaucetInput;
             break;
         case EVAL_REWARDS:
             strcpy(cp->unspendableCCaddr,RewardsCCaddr);

@@ -2439,10 +2439,11 @@ fprintf(stderr,"extralen.%d before disable bits\n",extralen);
         if ( strcmp("KMDICE",ASSETCHAINS_SYMBOL) == 0 )
         {
             CCDISABLEALL;
-            CCENABLE(EVAL_FAUCET);
             // breaks backwards compatibility, will need to be a special case if this chain still exists
             // should provide a branch that only receives security updates
             // CCENABLE(EVAL_DICE);            CCENABLE(EVAL_ORACLES);
+            // CCENABLE(EVAL_FAUCET);
+
         }
     } else BITCOIND_RPCPORT = GetArg("-rpcport", BaseParams().RPCPort());
     KOMODO_DPOWCONFS = GetArg("-dpowconfs",dpowconfs);
