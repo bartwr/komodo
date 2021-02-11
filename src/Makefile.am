@@ -297,6 +297,7 @@ libbitcoin_server_a_SOURCES = \
   cc/CCutils.cpp \
   cc/CCtokens.cpp \
   cc/assets.cpp \
+  cc/oracles.cpp \
   cc/prices.cpp \
   cc/pegs.cpp \
   cc/marmara.cpp \
