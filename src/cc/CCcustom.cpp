@@ -17,7 +17,6 @@
 #include "CCinclude.h"
 #include "CCassets.h"
 #include "CCchannels.h"
-#include "CCOracles.h"
 #include "CCPrices.h"
 #include "CCPegs.h"
 #include "CCMarmara.h"
@@ -68,17 +67,6 @@ const char *ChannelsCCaddr = "RQy3rwX8sP9oDm3c39vGKA6H315cgtPLfr";
 const char *ChannelsNormaladdr = "RQUuT8zmkvDfXqECH4m3VD3SsHZAfnoh1v";
 char ChannelsCChexstr[67] = { "035debdb19b1c98c615259339500511d6216a3ffbeb28ff5655a7ef5790a12ab0b" };
 uint8_t ChannelsCCpriv[32] = { 0xec, 0x91, 0x36, 0x15, 0x2d, 0xd4, 0x48, 0x73, 0x22, 0x36, 0x4f, 0x6a, 0x34, 0x5c, 0x61, 0x0f, 0x01, 0xb4, 0x79, 0xe8, 0x1c, 0x2f, 0xa1, 0x1d, 0x4a, 0x0a, 0x21, 0x16, 0xea, 0x82, 0x84, 0x60 };
-#include "CCcustom.inc"
-#undef FUNCNAME
-#undef EVALCODE
-
-// Oracles
-#define FUNCNAME IsOraclesInput
-#define EVALCODE EVAL_ORACLES
-const char *OraclesCCaddr = "REt2C4ZMnX8YYX1DRpffNA4hECZTFm39e3";
-const char *OraclesNormaladdr = "RHkFKzn1csxA3fWzAsxsLWohoCgBbirXb5";
-char OraclesCChexstr[67] = { "038c1d42db6a45a57eccb8981b078fb7857b9b496293fe299d2b8d120ac5b5691a" };
-uint8_t OraclesCCpriv[32] = { 0xf7, 0x4b, 0x5b, 0xa2, 0x7a, 0x5e, 0x9c, 0xda, 0x89, 0xb1, 0xcb, 0xb9, 0xe6, 0x9c, 0x2c, 0x70, 0x85, 0x37, 0xdd, 0x00, 0x7a, 0x67, 0xff, 0x7c, 0x62, 0x1b, 0xe2, 0xfb, 0x04, 0x8f, 0x85, 0xbf };
 #include "CCcustom.inc"
 #undef FUNCNAME
 #undef EVALCODE
@@ -237,14 +225,6 @@ struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
             memcpy(cp->CCpriv,ChannelsCCpriv,32);
             cp->validate = ChannelsValidate;
             cp->ismyvin = IsChannelsInput;
-            break;
-        case EVAL_ORACLES:
-            strcpy(cp->unspendableCCaddr,OraclesCCaddr);
-            strcpy(cp->normaladdr,OraclesNormaladdr);
-            strcpy(cp->CChexstr,OraclesCChexstr);
-            memcpy(cp->CCpriv,OraclesCCpriv,32);
-            cp->validate = OraclesValidate;
-            cp->ismyvin = IsOraclesInput;
             break;
         case EVAL_PRICES:
             strcpy(cp->unspendableCCaddr,PricesCCaddr);

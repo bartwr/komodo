@@ -5585,9 +5585,7 @@ int32_t verus_staked(CBlock *pBlock, CMutableTransaction &txNew, uint32_t &nBits
 
 
 #include "../cc/CCassets.h"
-#include "../cc/CCfsm.h"
 #include "../cc/CCchannels.h"
-#include "../cc/CCOracles.h"
 #include "../cc/CCGateways.h"
 #include "../cc/CCPrices.h"
 #include "../cc/CCMarmara.h"
@@ -6014,19 +6012,6 @@ UniValue payments_list(const UniValue& params, bool fHelp, const CPubKey& mypk)
     LOCK2(cs_main, pwalletMain->cs_wallet);
     cp = CCinit(&C,EVAL_PAYMENTS);
     return(PaymentsList(cp,(char *)""));
-}
-
-UniValue oraclesaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    struct CCcontract_info *cp,C; std::vector<unsigned char> pubkey;
-    cp = CCinit(&C,EVAL_ORACLES);
-    if ( fHelp || params.size() > 1 )
-        throw runtime_error("oraclesaddress [pubkey]\n");
-    if ( ensure_CCrequirements(cp->evalcode) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    if ( params.size() == 1 )
-        pubkey = ParseHex(params[0].get_str().c_str());
-    return(CCaddress(cp,(char *)"Oracles",pubkey));
 }
 
 UniValue pricesaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
@@ -6732,189 +6717,6 @@ UniValue gatewaysprocessed(const UniValue& params, bool fHelp, const CPubKey& my
     bindtxid = Parseuint256((char *)params[0].get_str().c_str());
     coin = params[1].get_str();
     return(GatewaysProcessedWithdraws(mypk,bindtxid,coin));
-}
-
-UniValue oracleslist(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    if ( fHelp || params.size() > 0 )
-        throw runtime_error("oracleslist\n");
-    if ( ensure_CCrequirements(EVAL_ORACLES) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    return(OraclesList());
-}
-
-UniValue oraclesinfo(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    uint256 txid;
-    if ( fHelp || params.size() != 1 )
-        throw runtime_error("oraclesinfo oracletxid\n");
-    if ( ensure_CCrequirements(EVAL_ORACLES) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    txid = Parseuint256((char *)params[0].get_str().c_str());
-    return(OracleInfo(txid));
-}
-
-UniValue oraclesfund(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); uint256 txid;
-    if ( fHelp || params.size() != 1 )
-        throw runtime_error("oraclesfund oracletxid\n");
-    if ( ensure_CCrequirements(EVAL_ORACLES) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    Lock2NSPV(mypk);
-    txid = Parseuint256((char *)params[0].get_str().c_str());
-    result = OracleFund(mypk,0,txid);
-    if ( result[JSON_HEXTX].getValStr().size() > 0  )
-    {
-        result.push_back(Pair("result", "success"));
-    }
-    Unlock2NSPV(mypk);
-    return(result);
-}
-
-UniValue oraclesregister(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); uint256 txid; int64_t datafee;
-    if ( fHelp || params.size() != 2 )
-        throw runtime_error("oraclesregister oracletxid datafee\n");
-    if ( ensure_CCrequirements(EVAL_ORACLES) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    Lock2NSPV(mypk);
-    txid = Parseuint256((char *)params[0].get_str().c_str());
-    if ( (datafee= atol((char *)params[1].get_str().c_str())) == 0 )
-        datafee = atof((char *)params[1].get_str().c_str()) * COIN + 0.00000000499999;
-    result = OracleRegister(mypk,0,txid,datafee);
-    if ( result[JSON_HEXTX].getValStr().size() > 0  )
-    {
-        result.push_back(Pair("result", "success"));
-    }
-    Unlock2NSPV(mypk);
-    return(result);
-}
-
-UniValue oraclessubscribe(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); uint256 txid; int64_t amount; std::vector<unsigned char> pubkey;
-    if ( fHelp || params.size() != 3 )
-        throw runtime_error("oraclessubscribe oracletxid publisher amount\n");
-    if ( ensure_CCrequirements(EVAL_ORACLES) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    Lock2NSPV(mypk);
-    txid = Parseuint256((char *)params[0].get_str().c_str());
-    pubkey = ParseHex(params[1].get_str().c_str());
-    amount = atof((char *)params[2].get_str().c_str()) * COIN + 0.00000000499999;
-    result = OracleSubscribe(mypk,0,txid,pubkey2pk(pubkey),amount);
-    if ( result[JSON_HEXTX].getValStr().size() > 0  )
-    {
-        result.push_back(Pair("result", "success"));
-    }
-    Unlock2NSPV(mypk);
-    return(result);
-}
-
-UniValue oraclessample(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); uint256 oracletxid,txid; int32_t num; char *batonaddr;
-    if ( fHelp || params.size() != 2 )
-        throw runtime_error("oraclessample oracletxid txid\n");
-    if ( ensure_CCrequirements(EVAL_ORACLES) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    oracletxid = Parseuint256((char *)params[0].get_str().c_str());
-    txid = Parseuint256((char *)params[1].get_str().c_str());
-    return(OracleDataSample(oracletxid,txid));
-}
-
-UniValue oraclessamples(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); uint256 txid; int32_t num; char *batonaddr;
-    if ( fHelp || params.size() != 3 )
-        throw runtime_error("oraclessamples oracletxid batonaddress num\n");
-    if ( ensure_CCrequirements(EVAL_ORACLES) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    txid = Parseuint256((char *)params[0].get_str().c_str());
-    batonaddr = (char *)params[1].get_str().c_str();
-    num = atoi((char *)params[2].get_str().c_str());
-    return(OracleDataSamples(txid,batonaddr,num));
-}
-
-UniValue oraclesdata(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); uint256 txid; std::vector<unsigned char> data;
-    if ( fHelp || params.size() != 2 )
-        throw runtime_error("oraclesdata oracletxid hexstr\n");
-    if ( ensure_CCrequirements(EVAL_ORACLES) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    Lock2NSPV(mypk);
-    txid = Parseuint256((char *)params[0].get_str().c_str());
-    data = ParseHex(params[1].get_str().c_str());
-    result = OracleData(mypk,0,txid,data);
-    if ( result[JSON_HEXTX].getValStr().size() > 0  )
-    {
-        result.push_back(Pair("result", "success"));
-    }
-    Unlock2NSPV(mypk);
-    return(result);
-}
-
-UniValue oraclescreate(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); std::string name,description,format;
-    if ( fHelp || params.size() != 3 )
-        throw runtime_error("oraclescreate name description format\n");
-    if ( ensure_CCrequirements(EVAL_ORACLES) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    Lock2NSPV(mypk);
-    name = params[0].get_str();
-    description = params[1].get_str();
-    format = params[2].get_str();
-    result = OracleCreate(mypk,0,name,description,format);
-    if ( result[JSON_HEXTX].getValStr().size() > 0  )
-    {
-        result.push_back(Pair("result", "success"));
-    }
-    Unlock2NSPV(mypk);
-    return(result);
-}
-
-UniValue FSMcreate(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    UniValue result(UniValue::VOBJ); std::string name,states,hex;
-    if ( fHelp || params.size() != 2 )
-        throw runtime_error("FSMcreate name states\n");
-    if ( ensure_CCrequirements(EVAL_FSM) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    const CKeyStore& keystore = *pwalletMain;
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-    name = params[0].get_str();
-    states = params[1].get_str();
-    hex = FSMCreate(0,name,states);
-    if ( hex.size() > 0 )
-    {
-        result.push_back(Pair("result", "success"));
-        result.push_back(Pair("hex", hex));
-    } else result.push_back(Pair("error", "couldnt create FSM transaction"));
-    return(result);
-}
-
-UniValue FSMlist(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    uint256 tokenid;
-    if ( fHelp || params.size() > 0 )
-        throw runtime_error("FSMlist\n");
-    if ( ensure_CCrequirements(EVAL_FSM) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    return(FSMList());
-}
-
-UniValue FSMinfo(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-    uint256 FSMtxid;
-    if ( fHelp || params.size() != 1 )
-        throw runtime_error("FSMinfo fundingtxid\n");
-    if ( ensure_CCrequirements(EVAL_FSM) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    FSMtxid = Parseuint256((char *)params[0].get_str().c_str());
-    return(FSMInfo(FSMtxid));
 }
 
 uint32_t pricesGetParam(UniValue param) {
