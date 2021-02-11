@@ -299,7 +299,6 @@ libbitcoin_server_a_SOURCES = \
   cc/assets.cpp \
   cc/faucet.cpp \
   cc/rewards.cpp \
-  cc/dice.cpp \
   cc/lotto.cpp \
   cc/fsm.cpp \
   cc/heir.cpp \
