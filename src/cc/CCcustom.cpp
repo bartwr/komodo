@@ -21,7 +21,6 @@
 #include "CCauction.h"
 #include "CClotto.h"
 #include "CCfsm.h"
-#include "CCHeir.h"
 #include "CCchannels.h"
 #include "CCOracles.h"
 #include "CCPrices.h"
@@ -341,14 +340,6 @@ struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
             memcpy(cp->CCpriv,AuctionCCpriv,32);
             cp->validate = AuctionValidate;
             cp->ismyvin = IsAuctionInput;
-            break;
-        case EVAL_HEIR:
-            strcpy(cp->unspendableCCaddr,HeirCCaddr);
-            strcpy(cp->normaladdr,HeirNormaladdr);
-            strcpy(cp->CChexstr,HeirCChexstr);
-            memcpy(cp->CCpriv,HeirCCpriv,32);
-            cp->validate = HeirValidate;
-            cp->ismyvin = IsHeirInput;
             break;
         case EVAL_CHANNELS:
             strcpy(cp->unspendableCCaddr,ChannelsCCaddr);

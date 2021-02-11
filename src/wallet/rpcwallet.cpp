@@ -5594,10 +5594,10 @@ int32_t verus_staked(CBlock *pBlock, CMutableTransaction &txNew, uint32_t &nBits
 #include "../cc/CCOracles.h"
 #include "../cc/CCGateways.h"
 #include "../cc/CCPrices.h"
-#include "../cc/CCHeir.h"
 #include "../cc/CCMarmara.h"
 #include "../cc/CCPayments.h"
 #include "../cc/CCPegs.h"
+#include "../cc/CCtokens.h"
 
 int32_t ensure_CCrequirements(uint8_t evalcode)
 {
@@ -6107,18 +6107,6 @@ UniValue gatewaysaddress(const UniValue& params, bool fHelp, const CPubKey& mypk
     if ( params.size() == 1 )
         pubkey = ParseHex(params[0].get_str().c_str());
     return(CCaddress(cp,(char *)"Gateways",pubkey));
-}
-
-UniValue heiraddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-	struct CCcontract_info *cp,C; std::vector<unsigned char> pubkey;
-	cp = CCinit(&C,EVAL_HEIR);
-    if ( fHelp || params.size() > 1 )
-        throw runtime_error("heiraddress pubkey\n");
-    if ( ensure_CCrequirements(cp->evalcode) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-    pubkey = ParseHex(params[0].get_str().c_str());
-	return(CCaddress(cp,(char *)"Heir",pubkey));
 }
 
 UniValue lottoaddress(const UniValue& params, bool fHelp, const CPubKey& mypk)
@@ -7870,145 +7858,6 @@ UniValue getbalance64(const UniValue& params, bool fHelp, const CPubKey& mypk)
     ret.push_back(Pair("staking", a));
     ret.push_back(Pair("notstaking", b));
     return ret;
-}
-
-
-// heir contract functions for coins and tokens
-UniValue heirfund(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-	UniValue result(UniValue::VOBJ);
-	uint256 tokenid = zeroid;
-	int64_t amount;
-	int64_t inactivitytime;
-	std::string hex;
-	std::vector<unsigned char> pubkey;
-	std::string name, memo;
-
-	if (!EnsureWalletIsAvailable(fHelp))
-	    return NullUniValue;
-
-	if (fHelp || params.size() != 5 && params.size() != 6)
-		throw runtime_error("heirfund funds heirname heirpubkey inactivitytime memo [tokenid]\n");
-	if (ensure_CCrequirements(EVAL_HEIR) < 0)
-		throw runtime_error(CC_REQUIREMENTS_MSG);
-
-	const CKeyStore& keystore = *pwalletMain;
-	LOCK2(cs_main, pwalletMain->cs_wallet);
-
-	if (params.size() == 6)	// tokens in satoshis:
-		amount = atoll(params[0].get_str().c_str());
-    	else { // coins:
-        	amount = 0;   
-        	if (!ParseFixedPoint(params[0].get_str(), 8, &amount))  // using ParseFixedPoint instead atof to avoid small round errors
-            		amount = -1; // set error
-    	}
-	if (amount <= 0) {
-		result.push_back(Pair("result", "error"));
-		result.push_back(Pair("error", "incorrect amount"));
-		return result;
-	}
-
-	name = params[1].get_str();
-
-	pubkey = ParseHex(params[2].get_str().c_str());
-	if (!pubkey2pk(pubkey).IsValid()) {
-		result.push_back(Pair("result", "error"));
-		result.push_back(Pair("error", "incorrect pubkey"));
-		return result;
-	}
-
-	inactivitytime = atoll(params[3].get_str().c_str());
-	if (inactivitytime <= 0) {
-		result.push_back(Pair("result", "error"));
-		result.push_back(Pair("error", "incorrect inactivity time"));
-		return result;
-	}
-
-	memo = params[4].get_str();
-
-	if (params.size() == 6) {
-		tokenid = Parseuint256((char*)params[5].get_str().c_str());
-		if (tokenid == zeroid) {
-			result.push_back(Pair("result", "error"));
-			result.push_back(Pair("error", "incorrect tokenid"));
-			return result;
-		}
-	}
-
-	if( tokenid == zeroid )
-		result = HeirFundCoinCaller(0, amount, name, pubkey2pk(pubkey), inactivitytime, memo);
-	else
-		result = HeirFundTokenCaller(0, amount, name, pubkey2pk(pubkey), inactivitytime, memo, tokenid);
-
-	return result;
-}
-
-UniValue heiradd(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-	UniValue result; 
-	uint256 fundingtxid;
-	int64_t amount;
-	int64_t inactivitytime;
-	std::string hex;
-	std::vector<unsigned char> pubkey;
-	std::string name;
-
-	if (!EnsureWalletIsAvailable(fHelp))
-	    return NullUniValue;
-
-	if (fHelp || params.size() != 2)
-		throw runtime_error("heiradd funds fundingtxid\n");
-	if (ensure_CCrequirements(EVAL_HEIR) < 0)
-		throw runtime_error(CC_REQUIREMENTS_MSG);
-
-	const CKeyStore& keystore = *pwalletMain;
-	LOCK2(cs_main, pwalletMain->cs_wallet);
-
-	std::string strAmount = params[0].get_str();
-	fundingtxid = Parseuint256((char*)params[1].get_str().c_str());
-
-	result = HeirAddCaller(fundingtxid, 0, strAmount);
-	return result;
-}
-
-UniValue heirclaim(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-	UniValue result; uint256 fundingtxid;
-
-	if (!EnsureWalletIsAvailable(fHelp))
-	    return NullUniValue;
-	if (fHelp || params.size() != 2)
-		throw runtime_error("heirclaim funds fundingtxid\n");
-	if (ensure_CCrequirements(EVAL_HEIR) < 0)
-		throw runtime_error(CC_REQUIREMENTS_MSG);
-
-	const CKeyStore& keystore = *pwalletMain;
-	LOCK2(cs_main, pwalletMain->cs_wallet);
-
-    	std::string strAmount = params[0].get_str();
-	fundingtxid = Parseuint256((char*)params[1].get_str().c_str());
-	result = HeirClaimCaller(fundingtxid, 0, strAmount);
-	return result;
-}
-
-UniValue heirinfo(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-	uint256 fundingtxid;
-	if (fHelp || params.size() != 1) 
-		throw runtime_error("heirinfo fundingtxid\n");
-    if ( ensure_CCrequirements(EVAL_HEIR) < 0 )
-	    throw runtime_error(CC_REQUIREMENTS_MSG);
-	fundingtxid = Parseuint256((char*)params[0].get_str().c_str());
-	return (HeirInfo(fundingtxid));
-}
-
-UniValue heirlist(const UniValue& params, bool fHelp, const CPubKey& mypk)
-{
-	if (fHelp || params.size() != 0) 
-		throw runtime_error("heirlist\n");
-    if ( ensure_CCrequirements(EVAL_HEIR) < 0 )
-        throw runtime_error(CC_REQUIREMENTS_MSG);
-	return (HeirList());
 }
 
 UniValue pegscreate(const UniValue& params, bool fHelp, const CPubKey& mypk)

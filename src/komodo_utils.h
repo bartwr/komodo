@@ -2383,10 +2383,14 @@ fprintf(stderr,"extralen.%d before disable bits\n",extralen);
         }
         if ( strcmp("CCL",ASSETCHAINS_SYMBOL) == 0 )
         {
+
             // No CCs used on this chain yet. 
             CCDISABLEALL;
+
             CCENABLE(EVAL_TOKENS);
-            CCENABLE(EVAL_HEIR);
+            // breaks backwards compatibility, will need to be a special case if this chain still exists
+            // should provide a branch that only receives security updates
+            // CCENABLE(EVAL_HEIR);
         }
         if ( strcmp("COQUI",ASSETCHAINS_SYMBOL) == 0 )
         {
