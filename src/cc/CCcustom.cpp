@@ -16,7 +16,6 @@
 #include "key_io.h"
 #include "CCinclude.h"
 #include "CCassets.h"
-#include "CCrewards.h"
 #include "CCauction.h"
 #include "CClotto.h"
 #include "CCfsm.h"
@@ -61,17 +60,6 @@ const char *AssetsCCaddr = "RGKRjeTBw4LYFotSDLT6RWzMHbhXri6BG6";
 const char *AssetsNormaladdr = "RFYE2yL3KknWdHK6uNhvWacYsCUtwzjY3u";
 char AssetsCChexstr[67] = { "02adf84e0e075cf90868bd4e3d34a03420e034719649c41f371fc70d8e33aa2702" };
 uint8_t AssetsCCpriv[32] = { 0x9b, 0x17, 0x66, 0xe5, 0x82, 0x66, 0xac, 0xb6, 0xba, 0x43, 0x83, 0x74, 0xf7, 0x63, 0x11, 0x3b, 0xf0, 0xf3, 0x50, 0x6f, 0xd9, 0x6b, 0x67, 0x85, 0xf9, 0x7a, 0xf0, 0x54, 0x4d, 0xb1, 0x30, 0x77 };
-#include "CCcustom.inc"
-#undef FUNCNAME
-#undef EVALCODE
-
-// Rewards
-#define FUNCNAME IsRewardsInput
-#define EVALCODE EVAL_REWARDS
-const char *RewardsCCaddr = "RTsRBYL1HSvMoE3qtBJkyiswdVaWkm8YTK";
-const char *RewardsNormaladdr = "RMgye9jeczNjQx9Uzq8no8pTLiCSwuHwkz";
-char RewardsCChexstr[67] = { "03da60379d924c2c30ac290d2a86c2ead128cb7bd571f69211cb95356e2dcc5eb9" };
-uint8_t RewardsCCpriv[32] = { 0x82, 0xf5, 0xd2, 0xe7, 0xd6, 0x99, 0x33, 0x77, 0xfb, 0x80, 0x00, 0x97, 0x23, 0x3d, 0x1e, 0x6f, 0x61, 0xa9, 0xb5, 0x2e, 0x5e, 0xb4, 0x96, 0x6f, 0xbc, 0xed, 0x6b, 0xe2, 0xbb, 0x7b, 0x4b, 0xb3 };
 #include "CCcustom.inc"
 #undef FUNCNAME
 #undef EVALCODE
@@ -277,14 +265,6 @@ struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
             memcpy(cp->CCpriv,AssetsCCpriv,32);
             cp->validate = AssetsValidate;
             cp->ismyvin = IsAssetsInput;
-            break;
-        case EVAL_REWARDS:
-            strcpy(cp->unspendableCCaddr,RewardsCCaddr);
-            strcpy(cp->normaladdr,RewardsNormaladdr);
-            strcpy(cp->CChexstr,RewardsCChexstr);
-            memcpy(cp->CCpriv,RewardsCCpriv,32);
-            cp->validate = RewardsValidate;
-            cp->ismyvin = IsRewardsInput;
             break;
         case EVAL_LOTTO:
             strcpy(cp->unspendableCCaddr,LottoCCaddr);

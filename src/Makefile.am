@@ -297,7 +297,6 @@ libbitcoin_server_a_SOURCES = \
   cc/CCutils.cpp \
   cc/CCtokens.cpp \
   cc/assets.cpp \
-  cc/rewards.cpp \
   cc/lotto.cpp \
   cc/fsm.cpp \
   cc/oracles.cpp \
