@@ -286,7 +286,6 @@ struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
             cp->validate = GatewaysValidate;
             cp->ismyvin = IsGatewaysInput;
             break;
-
 		case EVAL_TOKENS:
 			strcpy(cp->unspendableCCaddr, TokensCCaddr);
 			strcpy(cp->normaladdr, TokensNormaladdr);
