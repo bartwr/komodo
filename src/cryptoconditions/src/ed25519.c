@@ -139,7 +139,7 @@ static void ed25519ToJSON(const CC *cond, cJSON *params) {
 }
 
 
-static CC *ed25519FromFulfillment(const Fulfillment_t *ffill) {
+static CC *ed25519FromFulfillment(const Fulfillment_t *ffill, FulfillmentFlags _flags) {
     CC *cond = cc_new(CC_Ed25519);
     cond->publicKey = calloc(1,32);
     memcpy(cond->publicKey, ffill->choice.ed25519Sha256.publicKey.buf, 32);
@@ -149,7 +149,7 @@ static CC *ed25519FromFulfillment(const Fulfillment_t *ffill) {
 }
 
 
-static Fulfillment_t *ed25519ToFulfillment(const CC *cond) {
+static Fulfillment_t *ed25519ToFulfillment(const CC *cond, FulfillmentFlags _flags) {
     if (!cond->signature) {
         return NULL;
     }
@@ -179,5 +179,17 @@ static uint32_t ed25519Subtypes(const CC *cond) {
     return 0;
 }
 
+static CC* ed25519Copy(const CC* cond)
+{
+    CC *condCopy = cc_new(CC_Ed25519);
+    condCopy->publicKey = calloc(1, 32);
+    memcpy(condCopy->publicKey, cond->publicKey, 32);
+    if (cond->signature) {
+        condCopy->signature = calloc(1, 64);
+        memcpy(condCopy->signature, cond->signature, 64);
+    }
+    return (condCopy);
+}
 
-struct CCType CC_Ed25519Type = { 4, "ed25519-sha-256", Condition_PR_ed25519Sha256, 0, &ed25519Fingerprint, &ed25519Cost, &ed25519Subtypes, &ed25519FromJSON, &ed25519ToJSON, &ed25519FromFulfillment, &ed25519ToFulfillment, &ed25519IsFulfilled, &ed25519Free };
+
+struct CCType CC_Ed25519Type = { 4, "ed25519-sha-256", Condition_PR_ed25519Sha256, 0, &ed25519Fingerprint, &ed25519Cost, &ed25519Subtypes, &ed25519FromJSON, &ed25519ToJSON, &ed25519FromFulfillment, &ed25519ToFulfillment, &ed25519IsFulfilled, &ed25519Free, &ed25519Copy };

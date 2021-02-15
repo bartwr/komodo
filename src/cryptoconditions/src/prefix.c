@@ -52,9 +52,9 @@ static unsigned long prefixCost(const CC *cond) {
 }
 
 
-static CC *prefixFromFulfillment(const Fulfillment_t *ffill) {
+static CC *prefixFromFulfillment(const Fulfillment_t *ffill, FulfillmentFlags flags) {
     PrefixFulfillment_t *p = ffill->choice.prefixSha256;
-    CC *sub = fulfillmentToCC(p->subfulfillment);
+    CC *sub = fulfillmentToCC(p->subfulfillment, flags);
     if (!sub) return 0;
     CC *cond = cc_new(CC_Prefix);
     cond->maxMessageLength = p->maxMessageLength;
@@ -66,8 +66,8 @@ static CC *prefixFromFulfillment(const Fulfillment_t *ffill) {
 }
 
 
-static Fulfillment_t *prefixToFulfillment(const CC *cond) {
-    Fulfillment_t *ffill = asnFulfillmentNew(cond->subcondition);
+static Fulfillment_t *prefixToFulfillment(const CC *cond, FulfillmentFlags flags) {
+    Fulfillment_t *ffill = asnFulfillmentNew(cond->subcondition, flags);
     if (!ffill) {
         return NULL;
     }
@@ -133,5 +133,16 @@ static void prefixFree(CC *cond) {
     cc_free(cond->subcondition);
 }
 
+static CC* prefixCopy(const CC* cond)
+{
+    CC *condCopy = cc_new(CC_Prefix);
+    condCopy->maxMessageLength = cond->maxMessageLength;
+    condCopy->prefix = calloc(1, cond->prefixLength);
+    memcpy(condCopy->prefix, cond->prefix, cond->prefixLength);
+    condCopy->prefixLength = cond->prefixLength;
+    condCopy->subcondition = cond->subcondition->type->copy(cond->subcondition);
+    return (condCopy);
+}
 
-struct CCType CC_PrefixType = { 1, "prefix-sha-256", Condition_PR_prefixSha256, &prefixVisitChildren, &prefixFingerprint, &prefixCost, &prefixSubtypes, &prefixFromJSON, &prefixToJSON, &prefixFromFulfillment, &prefixToFulfillment, &prefixIsFulfilled, &prefixFree };
+
+struct CCType CC_PrefixType = { 1, "prefix-sha-256", Condition_PR_prefixSha256, &prefixVisitChildren, &prefixFingerprint, &prefixCost, &prefixSubtypes, &prefixFromJSON, &prefixToJSON, &prefixFromFulfillment, &prefixToFulfillment, &prefixIsFulfilled, &prefixFree, &prefixCopy};

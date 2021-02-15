@@ -20,6 +20,7 @@ $(LIBSECP256K1): $(wildcard src/secp256k1/*)
 CRYPTOCONDITIONS_CORE=libcryptoconditions_core.la
 
 libcryptoconditions_core_la_SOURCES = \
+	include/cryptoconditions.h \
 	src/cryptoconditions.c \
 	src/utils.c \
 	src/include/cJSON.c \
@@ -48,6 +49,7 @@ libcryptoconditions_core_la_SOURCES = \
 	src/asn/ThresholdFingerprintContents.c	\
 	src/asn/RsaFingerprintContents.c	\
 	src/asn/Ed25519FingerprintContents.c \
+	src/asn/EvalFingerprintContents.c \
 	src/asn/EvalFulfillment.c \
 	src/asn/Secp256k1FingerprintContents.c \
 	src/asn/Secp256k1Fulfillment.c \

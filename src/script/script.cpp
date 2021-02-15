@@ -359,12 +359,13 @@ bool CScript::IsPayToCryptoCondition(CScript *pCCSubScript, std::vector<std::vec
 {
     const_iterator pc = begin();
     vector<unsigned char> data;
-    opcodetype opcode;
+    opcodetype opcode,opcode1;
     if (this->GetOp(pc, opcode, data))
         // Sha256 conditions are <76 bytes
-        if (opcode > OP_0 && opcode < OP_PUSHDATA1)
-            if (this->GetOp(pc, opcode, data))
-                if (opcode == OP_CHECKCRYPTOCONDITION)
+        if (data.size()>0 && (data[0]=='M' || (data[0]!='M' && opcode > OP_0 && opcode < OP_PUSHDATA1)))
+        //if (opcode > OP_0 && opcode < OP_PUSHDATA1)
+            if (this->GetOp(pc, opcode1, data))
+                if (opcode1 == OP_CHECKCRYPTOCONDITION)
                 {
                     const_iterator pcCCEnd = pc;
                     if (GetBalancedData(pc, vParams))
@@ -388,6 +389,53 @@ bool CScript::IsPayToCryptoCondition() const
     return IsPayToCryptoCondition(NULL);
 }
 
+bool CScript::IsCCV2() const
+{
+    const_iterator pc = begin();
+    std::vector<unsigned char> data;
+    opcodetype opcode;
+
+    if (!this->IsPayToCryptoCondition()) return (false);
+    if (this->GetOp(pc, opcode, data))
+    {
+        if (data[0]==CC_MIXED_MODE_PREFIX) return (true);
+    }
+    return (false);
+}
+
+const std::vector<unsigned char> CScript::GetCCV2SPK() const
+{
+    const_iterator pc = begin();
+    std::vector<unsigned char> data;
+    opcodetype opcode;
+
+    if (!this->IsPayToCryptoCondition()) return (std::vector<unsigned char>());
+    if (this->GetOp(pc, opcode, data))
+    {
+        if (data[0]==CC_MIXED_MODE_PREFIX) return data;
+    }
+    return (std::vector<unsigned char>());
+}
+
+bool CScript::HasEvalcodeCCV2(uint8_t evalCode) const
+{
+    std::vector<unsigned char> ccdata=this->GetCCV2SPK();
+
+    if (ccdata.empty()) return (false);
+    CC* cond=cc_readFulfillmentBinaryMixedMode((unsigned char*)ccdata.data()+1,ccdata.size()-1);
+    VerifyEval eval = [] (CC *cond, void *evalcode)
+    {
+        return (*(uint8_t *)evalcode==cond->code[0])?0:1;
+    };
+    if (!cc_verifyEval(cond,eval,&evalCode))
+    {
+        cc_free(cond);
+        return (true);
+    }
+    cc_free(cond);
+    return (false);
+}
+
 bool CScript::MayAcceptCryptoCondition() const
 {
     // Get the type mask of the condition
@@ -396,7 +444,7 @@ bool CScript::MayAcceptCryptoCondition() const
     opcodetype opcode;
     if (!this->GetOp(pc, opcode, data)) return false;
     if (!(opcode > OP_0 && opcode < OP_PUSHDATA1)) return false;
-    CC *cond = cc_readConditionBinary(data.data(), data.size());
+    CC *cond = cc_readConditionBinaryMaybeMixed(data.data(), data.size());
     if (!cond) return false;
     bool out = IsSupportedCryptoCondition(cond);
     cc_free(cond);
