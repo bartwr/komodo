@@ -1389,7 +1389,8 @@ int TransactionSignatureChecker::CheckCryptoCondition(
     if (error || !cond) return -1;
 
     if (!IsSupportedCryptoCondition(cond)) return 0;
-    if (!IsSignedCryptoCondition(cond)) return 0;
+    // if (!IsSignedCryptoCondition(cond)) return 0;
+    // Alright - removing this check to allow "signature-less conditions" that will be appended to typical p2pkh
     
     uint256 sighash;
     int nHashType = ffillBin.back();
@@ -1516,6 +1517,7 @@ bool VerifyScript(
     }
 
     vector<vector<unsigned char> > stack, stackCopy;
+
     if (IsCryptoConditionsEnabled() && scriptPubKey.IsPayToCryptoCondition()) {
         if (!EvalCryptoConditionSig(stack, scriptSig, serror))
             // serror is set

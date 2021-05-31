@@ -859,11 +859,21 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp, const CPubKey&
                 data << ParseHex(op_drop_data.get_str()) << OP_DROP;
             }
 
+            // OP_DUP OP_HASH160 <hash160(pubkey)> OP_EQUALVERIFY OP_CHECKSIGVERIFY <cond_hash> OP_CHECKCRYPTOCONDITION
+            // else 
+            // <cond_hash> OP_CHECKCRYPTOCONDITION
+            CScript normal_dest;
+            UniValue dest_arg = find_value(condJSON, "address");
+            if ( !dest_arg.isNull() ) {
+                destination = DecodeDestination(dest_arg.get_str());
+                normal_dest = GetScriptForDestination(destination);
+            }
+
             std::string valStr = condJSON.write(0, 0);
             char* valChr = const_cast<char*> (valStr.c_str());
             static char ccjsonerr[1000] = "\0";
             CC *mycond = cc_conditionFromJSONString(valChr, ccjsonerr);
-            rawTx.vout.push_back(CTxOut(nAmount, CCPubKey(mycond) + data));
+            rawTx.vout.push_back(CTxOut(nAmount, normal_dest + CCPubKey(mycond) + data));
         } else {
             destination = DecodeDestination(name_);
             if (IsValidDestination(destination)) {

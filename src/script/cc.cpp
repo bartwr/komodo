@@ -30,7 +30,8 @@ bool IsSupportedCryptoCondition(const CC *cond)
     if (mask & ~CCEnabledTypes) return false;
 
     // Also require that the condition have at least one signable node
-    if (!(mask & CCSigningNodes)) return false;
+    // if (!(mask & CCSigningNodes)) return false;
+    // No longer needed, just need to be careful with "signature-less CCs"
 
     return true;
 }
@@ -89,9 +90,8 @@ CScript CCPubKey(const CC *cond)
     unsigned char buf[1000];
     size_t len = cc_conditionBinary(cond, buf);
     // FIXME hardcoded test 
-    //return CScript() << std::vector<unsigned char>(buf, buf+len) << OP_CHECKCRYPTOCONDITION;
-    return CScript() << std::vector<unsigned char>(buf, buf+len) << OP_NOP10;
-
+    return CScript() << std::vector<unsigned char>(buf, buf+len) << OP_CHECKCRYPTOCONDITION;
+    //return CScript() << std::vector<unsigned char>(buf, buf+len) << OP_NOP10;
 }
 
 
