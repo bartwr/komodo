@@ -46,6 +46,8 @@
 #include "ui_interface.h"
 #include "util.h"
 #include "utilmoneystr.h"
+#include "hex.h"
+
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #endif
@@ -153,7 +155,6 @@ int32_t verus_staked(CBlock *pBlock, CMutableTransaction &txNew, uint32_t &nBits
 uint256 komodo_calcmerkleroot(CBlock *pblock, uint256 prevBlockHash, int32_t nHeight, bool fNew, CScript scriptPubKey);
 int32_t komodo_newStakerActive(int32_t height, uint32_t timestamp);
 int32_t komodo_notaryvin(CMutableTransaction &txNew,uint8_t *notarypub33, void* ptr);
-int32_t decode_hex(uint8_t *bytes,int32_t n,char *hex);
 int32_t komodo_is_notarytx(const CTransaction& tx);
 CScript Marmara_scriptPubKey(int32_t height,CPubKey pk);
 CScript MarmaraCoinbaseOpret(uint8_t funcid,int32_t height,CPubKey pk);
@@ -724,7 +725,7 @@ CBlockTemplate* CreateNewBlock(CPubKey _pk,const CScript& _scriptPubKeyIn, int32
             txNew.nLockTime = std::max(pindexPrev->GetMedianTimePast()+1, GetTime());
         else txNew.nLockTime = std::max((int64_t)(pindexPrev->nTime+1), GetTime());        
 
-        if ( ASSETCHAINS_SYMBOL[0] == 0 && IS_KOMODO_NOTARY != 0 && My_notaryid >= 0 )
+        if ( ASSETCHAINS_SYMBOL[0] == 0 && IS_KOMODO_NOTARY && My_notaryid >= 0 )
             txNew.vout[0].nValue += 5000;
         pblock->vtx[0] = txNew;
 
@@ -756,7 +757,7 @@ CBlockTemplate* CreateNewBlock(CPubKey _pk,const CScript& _scriptPubKeyIn, int32
                 len >>= 1;
                 txNew.vout[1].scriptPubKey.resize(len);
                 ptr = (uint8_t *)&txNew.vout[1].scriptPubKey[0];
-                decode_hex(ptr,len,(char *)ASSETCHAINS_SCRIPTPUB.c_str());
+                decode_hex(ptr,len,ASSETCHAINS_SCRIPTPUB.c_str());
             }
             else
             {
@@ -857,7 +858,7 @@ CBlockTemplate* CreateNewBlock(CPubKey _pk,const CScript& _scriptPubKeyIn, int32
         }
         pblock->nSolution.clear();
         pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
-        if ( ASSETCHAINS_SYMBOL[0] == 0 && IS_KOMODO_NOTARY != 0 && My_notaryid >= 0 )
+        if ( ASSETCHAINS_SYMBOL[0] == 0 && IS_KOMODO_NOTARY && My_notaryid >= 0 )
         {
             uint32_t r; CScript opret; void **ptr=0;
             CMutableTransaction txNotary = CreateNewContextualCMutableTransaction(Params().GetConsensus(), chainActive.Height() + 1);
@@ -904,7 +905,7 @@ CBlockTemplate* CreateNewBlock(CPubKey _pk,const CScript& _scriptPubKeyIn, int32
             }
             if ( ptr!=0 ) free(ptr);
         }
-        else if ( ASSETCHAINS_CC == 0 && pindexPrev != 0 && ASSETCHAINS_STAKED == 0 && (ASSETCHAINS_SYMBOL[0] != 0 || IS_KOMODO_NOTARY == 0 || My_notaryid < 0) )
+        else if ( ASSETCHAINS_CC == 0 && pindexPrev != 0 && ASSETCHAINS_STAKED == 0 && (ASSETCHAINS_SYMBOL[0] != 0 || !IS_KOMODO_NOTARY || My_notaryid < 0) )
         {
             CValidationState state;
             //fprintf(stderr,"check validity\n");
@@ -1021,7 +1022,7 @@ CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, int32_t nHeight, 
             len >>= 1;
             scriptPubKey.resize(len);
             ptr = (uint8_t *)&scriptPubKey[0];
-            decode_hex(ptr,len,(char *)ASSETCHAINS_SCRIPTPUB.c_str());
+            decode_hex(ptr,len,ASSETCHAINS_SCRIPTPUB.c_str());
         }
     }
     else if ( USE_EXTERNAL_PUBKEY != 0 )
@@ -1034,17 +1035,22 @@ CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, int32_t nHeight, 
     {
         //if ( !isStake || ASSETCHAINS_STAKED != 0 )
         {
-            if (!reservekey.GetReservedKey(pubkey))
-            {
-                return NULL;
+            if (!GetBoolArg("-disablewallet", false)) {
+                // wallet enabled
+                if (!reservekey.GetReservedKey(pubkey))
+                    return NULL;
+                scriptPubKey.clear();
+                scriptPubKey = CScript() << ToByteVector(pubkey) << OP_CHECKSIG;
+            } else {
+                // wallet disabled
+                CTxDestination dest = DecodeDestination(GetArg("-mineraddress", ""));
+                if (IsValidDestination(dest)) {
+                    // CKeyID keyID = boost::get<CKeyID>(dest);
+                    // scriptPubKey = CScript() << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
+                    scriptPubKey = GetScriptForDestination(dest);
+                } else
+                    return NULL;
             }
-            scriptPubKey.resize(35);
-            ptr = (uint8_t *)pubkey.begin();
-            scriptPubKey[0] = 33;
-            for (i=0; i<33; i++) {
-                scriptPubKey[i+1] = ptr[i];
-            }
-            scriptPubKey[34] = OP_CHECKSIG;
         }
     }
     if ( ASSETCHAINS_MARMARA != 0 && nHeight > 0 && (nHeight & 1) == 0 )
@@ -1121,7 +1127,7 @@ static bool ProcessBlockFound(CBlock* pblock)
 
 #ifdef ENABLE_WALLET
     // Remove key from key pool
-    if ( IS_KOMODO_NOTARY == 0 )
+    if ( !IS_KOMODO_NOTARY )
     {
         if (GetArg("-mineraddress", "").empty()) {
             // Remove key from key pool
@@ -1866,7 +1872,7 @@ void static BitcoinMiner()
                         if ( i == 33 )
                             externalflag = 1;
                         else externalflag = 0;
-                        if ( IS_KOMODO_NOTARY != 0 )
+                        if ( IS_KOMODO_NOTARY )
                         {
                             for (i=1; i<66; i++)
                                 if ( memcmp(pubkeys[i],pubkeys[0],33) == 0 )
@@ -1975,7 +1981,7 @@ void static BitcoinMiner()
                           //  MilliSleep(30);
                         return false;
                     }
-                    if ( IS_KOMODO_NOTARY != 0 && B.nTime > GetTime() )
+                    if ( IS_KOMODO_NOTARY && B.nTime > GetTime() )
                     {
                         //fprintf(stderr,"need to wait %d seconds to submit block\n",(int32_t)(B.nTime - GetAdjustedTime()));
                         while ( GetTime() < B.nTime-2 )
@@ -1990,7 +1996,7 @@ void static BitcoinMiner()
                     }
                     if ( ASSETCHAINS_STAKED == 0 )
                     {
-                        if ( IS_KOMODO_NOTARY != 0 )
+                        if ( IS_KOMODO_NOTARY )
                         {
                             int32_t r;
                             if ( (r= ((Mining_height + NOTARY_PUBKEY33[16]) % 64) / 8) > 0 )

@@ -377,10 +377,11 @@ char *komodo_issuemethod(char *userpass,char *method,char *params,uint16_t port)
     {
         sprintf(url,(char *)"http://127.0.0.1:%u",port);
         sprintf(postdata,"{\"method\":\"%s\",\"params\":%s}",method,params);
- //printf("[%s] (%s) postdata.(%s) params.(%s) USERPASS.(%s)\n",ASSETCHAINS_SYMBOL,url,postdata,params,KMDUSERPASS);
+        // printf("[%s] (%s) postdata.(%s) params.(%s) USERPASS.(%s)\n",ASSETCHAINS_SYMBOL,url,postdata,params,KMDUSERPASS);
         retstr2 = bitcoind_RPC(&retstr,(char *)"debug",url,userpass,method,params);
         //retstr = curl_post(&cHandle,url,USERPASS,postdata,0,0,0,0);
     }
+    // fprintf(stderr, "RPC RESP: %s\n", retstr2);
     return(retstr2);
 }
 
@@ -394,27 +395,45 @@ int32_t notarizedtxid_height(char *dest,char *txidstr,int32_t *kmdnotarized_heig
         port = KMD_PORT;
         userpass = KMDUSERPASS;
     }
-    else if ( strcmp(dest,"BTC") == 0 )
+    else if ( strcmp(dest,"BTC") == 0 ) // this is no longer strictly BTC; depends on -notary= path
     {
-        port = 8332;
+        port = DEST_PORT;
         userpass = BTCUSERPASS;
     }
     else return(0);
     if ( userpass[0] != 0 )
     {
-        if ( (jsonstr= komodo_issuemethod(userpass,(char *)"getinfo",params,port)) != 0 )
+        if ( strcmp("BTC",dest) != 0 )
         {
-            //printf("(%s)\n",jsonstr);
-            if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            if ( (jsonstr= komodo_issuemethod(userpass,(char *)"getinfo",params,port)) != 0 )
             {
-                if ( (item= jobj(json,(char *)"result")) != 0 )
+                //printf("(%s)\n",jsonstr);
+                if ( (json= cJSON_Parse(jsonstr)) != 0 )
                 {
-                    height = jint(item,(char *)"blocks");
-                    *kmdnotarized_heightp = strcmp(dest,"KMD") == 0 ? jint(item,(char *)"notarized") : height;
+                    if ( (item= jobj(json,(char *)"result")) != 0 )
+                    {
+                        height = jint(item,(char *)"blocks");
+                        *kmdnotarized_heightp = height;
+                    }
+                    free_json(json);
                 }
-                free_json(json);
+                free(jsonstr);
             }
-            free(jsonstr);
+        } else {
+            if ( (jsonstr= komodo_issuemethod(userpass,(char *)"getblockchaininfo",params,port)) != 0 )
+            {
+                //printf("(%s)\n",jsonstr);
+                if ( (json= cJSON_Parse(jsonstr)) != 0 )
+                {
+                    if ( (item= jobj(json,(char *)"result")) != 0 )
+                    {
+                        height = jint(item,(char *)"blocks");
+                        *kmdnotarized_heightp = strcmp(dest,"KMD") == 0 ? jint(item,(char *)"notarized") : height;
+                    }
+                    free_json(json);
+                }
+                free(jsonstr);
+            }
         }
         sprintf(params,"[\"%s\", 1]",txidstr);
         if ( (jsonstr= komodo_issuemethod(userpass,(char *)"getrawtransaction",params,port)) != 0 )
@@ -496,8 +515,7 @@ int32_t komodo_verifynotarization(char *symbol,char *dest,int32_t height,int32_t
     {
         if ( BTCUSERPASS[0] != 0 )
         {
-            //printf("BTCUSERPASS.(%s)\n",BTCUSERPASS);
-            jsonstr = komodo_issuemethod(BTCUSERPASS,(char *)"getrawtransaction",params,8332);
+            jsonstr = komodo_issuemethod(BTCUSERPASS,(char *)"getrawtransaction",params,DEST_PORT);
         }
         //else jsonstr = _dex_getrawtransaction();
         else return(0);
@@ -511,7 +529,7 @@ int32_t komodo_verifynotarization(char *symbol,char *dest,int32_t height,int32_t
     {
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
-            if ( (txjson= jobj(json,(char *)"result")) != 0 && (vouts= jarray(&n,txjson,(char *)"vout")) > 0 )
+            if ( (txjson= jobj(json,(char *)"result")) != 0 && (vouts= jarray(&n,txjson,(char *)"vout")) != 0 )
             {
                 vout = jitem(vouts,n-1);
                 if ( 0 && ASSETCHAINS_SYMBOL[0] != 0 )
@@ -555,34 +573,6 @@ CScript komodo_makeopret(CBlock *pblock, bool fNew)
     opret << OP_RETURN << E_MARSHAL(ss << merkleroot);
     return(opret);
 }
-
-/*uint256 komodo_getblockhash(int32_t height)
- {
- uint256 hash; char params[128],*hexstr,*jsonstr; cJSON *result; int32_t i; uint8_t revbuf[32];
- memset(&hash,0,sizeof(hash));
- sprintf(params,"[%d]",height);
- if ( (jsonstr= komodo_issuemethod(KMDUSERPASS,(char *)"getblockhash",params,BITCOIND_RPCPORT)) != 0 )
- {
- if ( (result= cJSON_Parse(jsonstr)) != 0 )
- {
- if ( (hexstr= jstr(result,(char *)"result")) != 0 )
- {
- if ( is_hexstr(hexstr,0) == 64 )
- {
- decode_hex(revbuf,32,hexstr);
- for (i=0; i<32; i++)
- ((uint8_t *)&hash)[i] = revbuf[31-i];
- }
- }
- free_json(result);
- }
- printf("KMD hash.%d (%s) %x\n",height,jsonstr,*(uint32_t *)&hash);
- free(jsonstr);
- }
- return(hash);
- }
-
- uint256 _komodo_getblockhash(int32_t height);*/
 
 uint64_t komodo_seed(int32_t height)
 {
@@ -809,7 +799,7 @@ int32_t komodo_is_notarytx(const CTransaction& tx)
         if ( ptr != 0 )
         {
             if ( crypto777[0] == 0 )
-                decode_hex(crypto777,33,(char *)CRYPTO777_PUBSECPSTR);
+                decode_hex(crypto777,33,CRYPTO777_PUBSECPSTR);
             if ( memcmp(ptr+1,crypto777,33) == 0 )
             {
                 //printf("found notarytx\n");
@@ -2264,7 +2254,7 @@ int64_t komodo_checkcommission(CBlock *pblock,int32_t height)
                 }
                 if ( ASSETCHAINS_SCRIPTPUB.size()/2 == scriptlen && scriptlen < sizeof(scripthex) )
                 {
-                    decode_hex(scripthex,scriptlen,(char *)ASSETCHAINS_SCRIPTPUB.c_str());
+                    decode_hex(scripthex,scriptlen,ASSETCHAINS_SCRIPTPUB.c_str());
                     if ( memcmp(scripthex,script,scriptlen) == 0 )
                         matched = scriptlen;
                 }
@@ -2453,7 +2443,7 @@ int32_t komodo_checkPOW(int64_t stakeTxValue, int32_t slowflag,CBlock *pblock,in
                 scriptlen = (int32_t)pblock->vtx[0].vout[0].scriptPubKey.size();
                 if ( ASSETCHAINS_SCRIPTPUB.size()/2 == scriptlen && scriptlen < sizeof(scripthex) )
                 {
-                    decode_hex(scripthex,scriptlen,(char *)ASSETCHAINS_SCRIPTPUB.c_str());
+                    decode_hex(scripthex,scriptlen,ASSETCHAINS_SCRIPTPUB.c_str());
                     if ( memcmp(scripthex,script,scriptlen) != 0 )
                         return(-1);
                 } else return(-1);
@@ -2776,7 +2766,7 @@ int32_t komodo_staked(CMutableTransaction &txNew,uint32_t nBits,uint32_t *blockt
                     earliest = eligible;
                     best_scriptPubKey = kp->scriptPubKey;
                     *utxovaluep = (uint64_t)kp->nValue;
-                    decode_hex((uint8_t *)utxotxidp,32,(char *)kp->txid.GetHex().c_str());
+                    decode_hex((uint8_t *)utxotxidp,32,kp->txid.GetHex().c_str());
                     *utxovoutp = kp->vout;
                     *txtimep = kp->txtime;
                 }

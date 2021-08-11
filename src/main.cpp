@@ -1434,6 +1434,7 @@ bool CheckTransaction(uint32_t tiptime,const CTransaction& tx, CValidationState 
     }
 }
 
+// ARRR notary exception
 int32_t komodo_isnotaryvout(char *coinaddr,uint32_t tiptime) // from ac_private chains only
 {
     int32_t season = getacseason(tiptime);
@@ -1460,7 +1461,7 @@ int32_t komodo_acpublic(uint32_t tiptime);
 bool CheckTransactionWithoutProofVerification(uint32_t tiptime,const CTransaction& tx, CValidationState &state)
 {
     // Basic checks that don't depend on any context
-    int32_t invalid_private_taddr=0,z_z=0,z_t=0,t_z=0,acpublic = komodo_acpublic(tiptime);
+    int32_t invalid_private_taddr=0,z_z=0,z_t=0,t_z=0,acpublic = komodo_acpublic(tiptime), current_season = getacseason(tiptime);
     /**
      * Previously:
      * 1. The consensus rule below was:
@@ -1571,9 +1572,18 @@ bool CheckTransactionWithoutProofVerification(uint32_t tiptime,const CTransactio
     }
     if ( ASSETCHAINS_PRIVATE != 0 && invalid_private_taddr != 0 && tx.vShieldedSpend.empty() == 0 )
     {
-        return state.DoS(100, error("CheckTransaction(): this is a private chain, no sapling -> taddr"),
-                         REJECT_INVALID, "bad-txns-acprivate-chain");
+        if ( !( current_season > 5 &&
+                tx.vin.size() == 0 &&
+                tx.vout.size() == 2 &&
+                tx.vout[0].scriptPubKey.IsPayToScriptHash() &&
+                tx.vout[0].scriptPubKey.IsRedeemScriptReveal(tx.vout[1].scriptPubKey) )) {
+                    return state.DoS(100, error("CheckTransaction(): this is a private chain, no sapling -> taddr"),
+                                     REJECT_INVALID, "bad-txns-acprivate-chain");
+                } else {
+                    invalid_private_taddr = false;
+                }
     }
+
     // Check for overflow valueBalance
     if (tx.valueBalance > MAX_MONEY || tx.valueBalance < -MAX_MONEY) {
         return state.DoS(100, error("CheckTransaction(): abs(tx.valueBalance) too large"),
@@ -3798,7 +3808,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                              error("ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)",
                                    block.vtx[0].GetValueOut(), blockReward),
                              REJECT_INVALID, "bad-cb-amount");
-        } else if ( IS_KOMODO_NOTARY != 0 )
+        } else if ( IS_KOMODO_NOTARY )
             fprintf(stderr,"allow nHeight.%d coinbase %.8f vs %.8f interest %.8f\n",(int32_t)pindex->GetHeight(),dstr(block.vtx[0].GetValueOut()),dstr(blockReward),dstr(sum));
     }
     if (!control.Wait())
@@ -5165,7 +5175,7 @@ bool CheckBlock(int32_t *futureblockp,int32_t height,CBlockIndex *pindex,const C
     {
         int32_t notaryid;
         int32_t special = komodo_chosennotary(&notaryid,height,pubkey33,tiptime);
-        if (notaryid > 0) {
+        if (notaryid > 0 || ( notaryid == 0 && height > nS5HardforkHeight ) ) {
             CScript merkleroot = CScript();
             CBlock blockcopy = block; // block shouldn't be changed below, so let's make it's copy
             CBlock *pblockcopy = (CBlock *)&blockcopy;
@@ -6013,6 +6023,13 @@ bool CheckDiskSpace(uint64_t nAdditionalBytes)
     return true;
 }
 
+/****
+ * Open a file
+ * @param pos where to position for the next read
+ * @param prefix the type of file (i.e. "blk", "rev", etc.
+ * @param fReadOnly open in read only mode
+ * @returns the file pointer or NULL on error
+ */
 FILE* OpenDiskFile(const CDiskBlockPos &pos, const char *prefix, bool fReadOnly)
 {
     static int32_t didinit[256];
@@ -6020,9 +6037,9 @@ FILE* OpenDiskFile(const CDiskBlockPos &pos, const char *prefix, bool fReadOnly)
         return NULL;
     boost::filesystem::path path = GetBlockPosFilename(pos, prefix);
     boost::filesystem::create_directories(path.parent_path());
-    FILE* file = fopen(path.string().c_str(), "rb+");
+    FILE* file = fopen(path.string().c_str(), "rb+"); // open existing file for reading and writing
     if (!file && !fReadOnly)
-        file = fopen(path.string().c_str(), "wb+");
+        file = fopen(path.string().c_str(), "wb+"); // create an empty file for reading and writing
     if (!file) {
         LogPrintf("Unable to open file %s\n", path.string());
         return NULL;
@@ -6042,14 +6059,32 @@ FILE* OpenDiskFile(const CDiskBlockPos &pos, const char *prefix, bool fReadOnly)
     return file;
 }
 
+/***
+ * Open a block file
+ * @param pos where to position for the next read
+ * @param fReadOnly true to open the file in read only mode
+ * @returns the file pointer or NULL on error
+ */
 FILE* OpenBlockFile(const CDiskBlockPos &pos, bool fReadOnly) {
     return OpenDiskFile(pos, "blk", fReadOnly);
 }
 
+/***
+ * Open an undo ("rev") file
+ * @param pos where to position for the next read
+ * @param fReadOnly true to open the file in read only mode
+ * @returns the file pointer or NULL on error
+ */
 FILE* OpenUndoFile(const CDiskBlockPos &pos, bool fReadOnly) {
     return OpenDiskFile(pos, "rev", fReadOnly);
 }
 
+/***
+ * Get the full filename (including path) or a specific .dat file
+ * @param pos the block position
+ * @param prefix the prefix (i.e. "blk" or "rev")
+ * @returns the filename with the complete path
+ */
 boost::filesystem::path GetBlockPosFilename(const CDiskBlockPos &pos, const char *prefix)
 {
     return GetDataDir() / "blocks" / strprintf("%s%05u.dat", prefix, pos.nFile);
@@ -6542,6 +6577,10 @@ void UnloadBlockIndex()
     fHavePruned = false;
 }
 
+/***
+ * Load block index
+ * @returns true on success
+ */
 bool LoadBlockIndex()
 {
     // Load block index from databases
@@ -7727,12 +7766,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             }
             pfrom->PushMessage("headers", vHeaders);
         }
-        /*else if ( IS_KOMODO_NOTARY != 0 )
-        {
-            static uint32_t counter;
-            if ( counter++ < 3 )
-                fprintf(stderr,"you can ignore redundant getheaders from peer.%d %d prev.%d\n",(int32_t)pfrom->id,(int32_t)(pindex ? pindex->GetHeight() : -1),pfrom->lasthdrsreq);
-        }*/
     }
 
 

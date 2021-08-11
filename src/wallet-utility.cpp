@@ -24,7 +24,7 @@ int32_t ASSETCHAINS_LWMAPOS = 0;
 int32_t VERUS_BLOCK_POSUNITS = 1000;
 int32_t ASSETCHAINS_OVERWINTER = 227520;
 int32_t ASSETCHAINS_SAPLING = 227520;
-int32_t KOMODO_TESTNODE = 0;
+bool IS_KOMODO_TESTNODE = false;
 
 unsigned int MAX_BLOCK_SIGOPS = 20000;
 
@@ -355,4 +355,10 @@ int main(int argc, char* argv[])
         return 0;
     else
         return -1;
+}
+
+// function stub to allow build wallet-utility
+bool komodo_is_vSolutionsFixActive()
+{
+    return true;
 }
