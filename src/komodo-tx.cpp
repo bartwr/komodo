@@ -42,7 +42,6 @@ using namespace std;
 #include "uint256.h"
 #include "arith_uint256.h"
 #include "komodo_structs.h"
-#include "komodo_globals.h"
 #include "komodo_defs.h"
 
 #include "komodo_interest.h"
@@ -198,6 +197,12 @@ static void RegisterLoad(const std::string& strInput)
 int32_t komodo_nextheight()
 {
     return(100000000);
+}
+
+// function stub to allow build komodo-tx
+bool komodo_is_vSolutionsFixActive()
+{
+    return true;
 }
 
 
