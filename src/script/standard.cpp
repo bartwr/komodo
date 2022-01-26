@@ -179,6 +179,22 @@ static bool MatchPayToPubkeyHash(const CScript& script, valtype& pubkeyhash)
     return false;
 }
 
+static bool MatchPayToPubkeyHash_PayToCC(const CScript& script, valtype& pubkeyhash)
+{
+    if (script.size() == 77 &&
+        script[0] == OP_DUP &&
+        script[1] == OP_HASH160 &&
+        script[2] == 0x14 &&
+        script[23] == OP_EQUALVERIFY &&
+       (script[24] == OP_CHECKSIGVERIFY || script[24] == OP_CHECKSIG ) && 
+        script[25] == 0x2e &&
+        script[72] == OP_CHECKCRYPTOCONDITION ) {
+        pubkeyhash = valtype(script.begin () + 3, script.begin() + 23);
+        return true;
+    }
+    return false;
+}
+
 /** Test for "small positive integer" script opcodes - OP_1 through OP_16. */
 static constexpr bool IsSmallInteger(opcodetype opcode)
 {
@@ -228,7 +244,6 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
         typeRet = TX_NULL_DATA;
         return true;
     }
-
     if (IsCryptoConditionsEnabled()) {
         // Shortcut for pay-to-crypto-condition
         CScript ccSubScript = CScript();
@@ -281,6 +296,12 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
         return true;
     }
 
+    if (MatchPayToPubkeyHash_PayToCC(scriptPubKey, data)) {
+        typeRet = TX_CRYPTOCONDITION;
+        vSolutionsRet.push_back(std::move(data));
+        return true;
+    }
+
     unsigned int required;
     std::vector<std::vector<unsigned char>> keys;
     if (MatchMultisig(scriptPubKey, required, keys)) {
@@ -292,6 +313,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
     }
 
     vSolutionsRet.clear();
+
     typeRet = TX_NONSTANDARD;
     return false;
 }

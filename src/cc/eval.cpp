@@ -110,11 +110,32 @@ bool Eval::Dispatch(const CC *cond, const CTransaction &txTo, unsigned int nIn)
             return ImportCoin(vparams, txTo, nIn);
             break;
 
+        case EVAL_BAREVOUT:
+            return BareCheckVout(vparams, txTo);
+            break;
+
+        case EVAL_BAREVIN:
+            return BareCheckVout(vparams, txTo);
+            break;
+
         default:
             return(ProcessCC(cp,this, vparams, txTo, nIn));
             break;
     }
     return Invalid("invalid-code, dont forget to add EVAL_NEWCC to Eval::Dispatch");
+}
+
+// absolutely bare bones eval codes for demonstration purposes
+bool Eval::BareCheckVout(const std::vector<uint8_t> params, const CTransaction &tx)
+{
+    fprintf(stderr, "BARE CHECK VOUT\n");
+    return tx.vin.size() < 2;
+}
+
+bool Eval::BareCheckVin(const std::vector<uint8_t> params, const CTransaction &tx)
+{
+    fprintf(stderr, "BARE CHECK VIN\n");
+    return tx.vout.size() < 2;
 }
 
 

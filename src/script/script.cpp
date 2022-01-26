@@ -239,6 +239,22 @@ bool CScript::IsPayToPublicKeyHash() const
 	    (*this)[24] == OP_CHECKSIG);
 }
 
+// OP_DUP OP_HASH160 <hash160(pubkey)> OP_EQUALVERIFY
+// OP_CHECKSIGVERIFY a22c8020e029c511da55523565835887e412e5a0c9b920801b007000df45e545f25028248103120c008203000401 OP_CHECKCRYPTOCONDITION
+bool CScript::IsPayToPublicKeyHash_PayToCC() const
+{
+    // Extra-fast test for pay-to-pubkey-hash CScripts:
+    return (this->size() == 77 &&
+        (*this)[0] == OP_DUP &&
+        (*this)[1] == OP_HASH160 &&
+        (*this)[2] == 0x14 &&
+        (*this)[23] == OP_EQUALVERIFY &&
+        ( (*this)[24] == OP_CHECKSIGVERIFY || (*this)[24] == OP_CHECKSIG ) && 
+        (*this)[25] == 0x2e &&
+        (*this)[77] == OP_CHECKCRYPTOCONDITION
+         );
+}
+
 bool CScript::IsPayToPublicKey() const
 {
     // Extra-fast test for pay-to-pubkey CScripts:

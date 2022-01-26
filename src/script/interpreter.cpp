@@ -404,7 +404,7 @@ bool EvalScript(
                 }
 
                 case OP_NOP1: case OP_NOP3: case OP_NOP4: case OP_NOP5:
-                case OP_NOP6: case OP_NOP7: case OP_NOP8: case OP_NOP9: case OP_NOP10:
+                case OP_NOP6: case OP_NOP7: case OP_NOP8: case OP_NOP9:
                 {
                     if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS)
                         return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_NOPS);
@@ -962,6 +962,21 @@ bool EvalScript(
                 }
                 break;
 
+                case OP_NOP10:
+                {
+                    if (!(flags & SCRIPT_VERIFY_ANTARA1)) {
+                        // not enabled; treat as a NOP10
+                        if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS) {
+                            return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_NOPS);
+                        }
+                        // Fall through to OP_CHECKCRYPTOCONDITION
+                        // FIXME would it be safer to do:
+                        // opcode = OP_CHECKCRYPTOCONDITION;
+                    } else {
+                        break;
+                    }
+                }
+
                 case OP_CHECKCRYPTOCONDITION:
                 case OP_CHECKCRYPTOCONDITIONVERIFY:
                 {
@@ -1374,7 +1389,8 @@ int TransactionSignatureChecker::CheckCryptoCondition(
     if (error || !cond) return -1;
 
     if (!IsSupportedCryptoCondition(cond)) return 0;
-    if (!IsSignedCryptoCondition(cond)) return 0;
+    // if (!IsSignedCryptoCondition(cond)) return 0;
+    // Alright - removing this check to allow "signature-less conditions" that will be appended to typical p2pkh
     
     uint256 sighash;
     int nHashType = ffillBin.back();
@@ -1501,6 +1517,7 @@ bool VerifyScript(
     }
 
     vector<vector<unsigned char> > stack, stackCopy;
+
     if (IsCryptoConditionsEnabled() && scriptPubKey.IsPayToCryptoCondition()) {
         if (!EvalCryptoConditionSig(stack, scriptSig, serror))
             // serror is set
