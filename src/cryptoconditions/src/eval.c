@@ -26,7 +26,18 @@ struct CCType CC_EvalType;
 
 
 static void evalFingerprint(const CC *cond, uint8_t *out) {
-    sha256(cond->code, cond->codeLength, out);
+
+    unsigned char codeHash[32], paramHash[32];
+    unsigned char preimage[64];
+    sha256(cond->code, cond->codeLength, codeHash);
+    sha256(cond->param, cond->paramLength, paramHash);
+    fprintf(stderr, "codeHash len %d\n", codeHash );
+    fprintf(stderr, "paramHash len %d\n", paramHash );
+
+    strcat(preimage, codeHash);
+    strcat(preimage, paramHash);
+
+    sha256(preimage, 64, out);
 }
 
 
@@ -34,6 +45,18 @@ static unsigned long evalCost(const CC *cond) {
     return 1048576;  // Pretty high
 }
 
+/*
+so....
+
+I want to take a string ( char* some_string ) 
+then...
+
+check that all the characters are valid hex...
+then...
+
+store that as a byte array
+
+*/
 
 static CC *evalFromJSON(const cJSON *params, char *err) {
     size_t codeLength;
@@ -49,7 +72,16 @@ static CC *evalFromJSON(const cJSON *params, char *err) {
     // FIXME - Alright 
     // we should check that this is valid hex and use it literally as "cond->param"
     // we are wasting space by converting values to ascii and back
-    char* param_string = cJSON_Print( eval_params_json );
+    char* param_string = cJSON_PrintUnformatted( eval_params_json );
+    // this adds " to beginning and end?!
+    for (int i = 1; i < strlen(param_string)-1; i++) {
+        if (!isxdigit(param_string[i]))
+        {
+            strcpy(err, "\"params\" must be valid hex string");
+            return NULL;
+        }
+    }
+
 
     if (!jsonGetBase64(params, "code", err, &code, &codeLength)) {
         return NULL;
