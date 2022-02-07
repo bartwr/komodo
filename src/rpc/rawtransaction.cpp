@@ -845,7 +845,7 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp, const CPubKey&
             std::vector<unsigned char> data = ParseHexV(sendTo[name_].getValStr(),"Data");
             CTxOut out(0, CScript() << OP_RETURN << data);
             rawTx.vout.push_back(out);
-        } else if ( name_ == "condition") {
+        } else if ( name_.rfind("condition", 0) == 0) { // allow duplicate "condition" fields for multiple CC vouts
             UniValue condJSON = sendTo[name_].get_obj();
 
             CAmount nAmount = AmountFromValue(find_value(condJSON, "amount"));
