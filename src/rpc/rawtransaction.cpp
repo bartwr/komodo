@@ -871,8 +871,10 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp, const CPubKey&
 
             std::string valStr = condJSON.write(0, 0);
             char* valChr = const_cast<char*> (valStr.c_str());
-            static char ccjsonerr[1000] = "\0";
+            char ccjsonerr[1000] = "\0";
             CC *mycond = cc_conditionFromJSONString(valChr, ccjsonerr);
+            if ( mycond == NULL )
+                throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Unable to parse condition: ") + ccjsonerr);
             rawTx.vout.push_back(CTxOut(nAmount, normal_dest + CCPubKey(mycond) + data));
         } else {
             destination = DecodeDestination(name_);
@@ -1278,7 +1280,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
                 // FIXME Alright - probably an intended way of doing this, research scott's initial commits
                 std::string valStr = cond.write(0, 0);
                 char* valChr = const_cast<char*> (valStr.c_str());
-                static char ccjsonerr[1000] = "\0";
+                char ccjsonerr[1000] = "\0";
                 CC *mycond = cc_conditionFromJSONString(valChr, ccjsonerr);
 
                 // "{}" or similar was provided 

@@ -38,6 +38,18 @@ static unsigned long evalCost(const CC *cond) {
 static CC *evalFromJSON(const cJSON *params, char *err) {
     size_t codeLength;
     unsigned char *code = 0;
+    size_t eval_params_len;
+
+    cJSON *eval_params_json = cJSON_GetObjectItem(params, "params");
+    if (!eval_params_json || !cJSON_IsString(eval_params_json)) {
+        strcpy(err, "\"params\" must be a string");
+        return NULL;
+    }
+
+    // FIXME - Alright 
+    // we should check that this is valid hex and use it literally as "cond->param"
+    // we are wasting space by converting values to ascii and back
+    char* param_string = cJSON_Print( eval_params_json );
 
     if (!jsonGetBase64(params, "code", err, &code, &codeLength)) {
         return NULL;
@@ -46,6 +58,8 @@ static CC *evalFromJSON(const cJSON *params, char *err) {
     CC *cond = cc_new(CC_Eval);
     cond->code = code;
     cond->codeLength = codeLength;
+    cond->param = param_string;
+    cond->paramLength = strlen(param_string);
     return cond;
 }
 

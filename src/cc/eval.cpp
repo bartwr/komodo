@@ -110,12 +110,20 @@ bool Eval::Dispatch(const CC *cond, const CTransaction &txTo, unsigned int nIn)
             return ImportCoin(vparams, txTo, nIn);
             break;
 
-        case EVAL_BAREVOUT:
-            return BareCheckVout(vparams, txTo);
+        case EVAL_MAXVOUT:
+            return MaxVout(vparams, txTo, cond->param, cond->paramLength);
             break;
 
-        case EVAL_BAREVIN:
-            return BareCheckVout(vparams, txTo);
+        case EVAL_MINVOUT:
+            return MinVout(vparams, txTo, cond->param, cond->paramLength);
+            break;
+
+        case EVAL_MAXVIN:
+            return MaxVin(vparams, txTo, cond->param, cond->paramLength);
+            break;
+
+        case EVAL_MINVIN:
+            return MinVin(vparams, txTo, cond->param, cond->paramLength);
             break;
 
         default:
@@ -126,18 +134,45 @@ bool Eval::Dispatch(const CC *cond, const CTransaction &txTo, unsigned int nIn)
 }
 
 // absolutely bare bones eval codes for demonstration purposes
-bool Eval::BareCheckVout(const std::vector<uint8_t> params, const CTransaction &tx)
+bool Eval::MaxVout(const std::vector<uint8_t> params, const CTransaction &tx, uint8_t *param, size_t paramLength)
 {
-    fprintf(stderr, "BARE CHECK VOUT\n");
-    return tx.vin.size() < 2;
+    int user_input = atoi((const char *)param);
+    if ( tx.vin.size() < user_input )
+        return true;
+
+    fprintf(stderr, "%s cond->param=%s\n", __func__, param);
+    return Invalid("Eval::MaxVout failed");
 }
 
-bool Eval::BareCheckVin(const std::vector<uint8_t> params, const CTransaction &tx)
+bool Eval::MinVout(const std::vector<uint8_t> params, const CTransaction &tx, uint8_t *param, size_t paramLength)
 {
-    fprintf(stderr, "BARE CHECK VIN\n");
-    return tx.vout.size() < 2;
+    int user_input = atoi((const char *)param);
+    if ( tx.vin.size() > user_input )
+        return true;
+
+    fprintf(stderr, "%s cond->param=%s\n", __func__, param);
+    return Invalid("Eval::MinVout failed");
 }
 
+bool Eval::MaxVin(const std::vector<uint8_t> params, const CTransaction &tx, uint8_t *param, size_t paramLength)
+{
+    int user_input = atoi((const char *)param);
+    if ( tx.vout.size() < user_input )
+        return true;
+
+    fprintf(stderr, "%s cond->param=%s\n", __func__, param);
+    return Invalid("Eval::MaxVin failed");
+}
+
+bool Eval::MinVin(const std::vector<uint8_t> params, const CTransaction &tx, uint8_t *param, size_t paramLength)
+{
+    int user_input = atoi((const char *)param);
+    if ( tx.vout.size() < user_input )
+        return true;
+
+    fprintf(stderr, "%s cond->param=%s\n", __func__, param);
+    return Invalid("Eval::MinVin failed");
+}
 
 bool Eval::GetSpendsConfirmed(uint256 hash, std::vector<CTransaction> &spends) const
 {

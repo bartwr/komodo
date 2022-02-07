@@ -57,8 +57,11 @@
         EVAL(EVAL_GATEWAYS, 0xf1) \
 		EVAL(EVAL_TOKENS, 0xf2) \
         EVAL(EVAL_IMPORTGATEWAY, 0xf3)  \
-        EVAL(EVAL_BAREVOUT, 0xf4)  \
-        EVAL(EVAL_BAREVIN, 0xf5)  \
+        EVAL(EVAL_MAXVOUT, 0xf4)  \
+        EVAL(EVAL_MINVOUT, 0xf5)  \
+        EVAL(EVAL_MAXVIN, 0xf6)  \
+        EVAL(EVAL_MINVIN, 0xf7)  \
+
 
 
 // evalcodes 0x10 to 0x7f are reserved for cclib dynamic CC
@@ -101,9 +104,14 @@ public:
      */
     bool ImportCoin(std::vector<uint8_t> params, const CTransaction &importTx, unsigned int nIn);
 
-    bool BareCheckVout(std::vector<uint8_t> params, const CTransaction &tx);
+    bool MaxVout(std::vector<uint8_t> params, const CTransaction &tx, uint8_t *param, size_t paramLength);
 
-    bool BareCheckVin(std::vector<uint8_t> params, const CTransaction &tx);
+    bool MinVout(std::vector<uint8_t> params, const CTransaction &tx, uint8_t *param, size_t paramLength);
+
+    bool MaxVin(std::vector<uint8_t> params, const CTransaction &tx, uint8_t *param, size_t paramLength);
+
+    bool MinVin(std::vector<uint8_t> params, const CTransaction &tx, uint8_t *param, size_t paramLength);
+
 
     /*
      * IO functions

@@ -92,7 +92,7 @@ CC* CCNewEval(std::vector<unsigned char> code, std::vector<unsigned char> param)
     cond->codeLength = code.size();
 
     cond->param = (unsigned char*) malloc(param.size());
-    memcpy(cond->param, param.data(), param.size());
+    memcpy(cond->param, param.data(), param.size()); // FIXME overflow
     cond->paramLength = param.size();
 
     return cond;
