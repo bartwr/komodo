@@ -752,6 +752,7 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp, const CPubKey&
             "    {\n"
             "      \"address\": x.xxx,    (numeric or string, required) The key is the komodo address or script (in hex), the numeric value (can be string) is the " + CURRENCY_UNIT + " amount\n"
             "      \"data\": \"hex\"      (string, required) The key is \"data\", the value is hex encoded data\n"
+            "      \"cc\": { \"amount\": xxx, \"condition\": { <cryptocondition> } }\n"
             "      ,...\n"
             "    }\n"
             "3. locktime              (numeric, optional, default=0) Raw locktime. Non-0 value also locktime-activates inputs\n"
@@ -845,37 +846,19 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp, const CPubKey&
             std::vector<unsigned char> data = ParseHexV(sendTo[name_].getValStr(),"Data");
             CTxOut out(0, CScript() << OP_RETURN << data);
             rawTx.vout.push_back(out);
-        } else if ( name_.rfind("condition", 0) == 0) { // allow duplicate "condition" fields for multiple CC vouts
-            UniValue condJSON = sendTo[name_].get_obj();
-
-            CAmount nAmount = AmountFromValue(find_value(condJSON, "amount"));
-
-            // we are limited to 520 bytes per push
-            // if we need more than this, we can do
-            // <data> OP_DROP <more_data> OP_DROP <even_more> OP_DROP
-            CScript data;
-            UniValue op_drop_data = find_value(condJSON, "data");
-            if ( !op_drop_data.isNull() ) {
-                data << ParseHex(op_drop_data.get_str()) << OP_DROP;
-            }
-
-            // OP_DUP OP_HASH160 <hash160(pubkey)> OP_EQUALVERIFY OP_CHECKSIGVERIFY <cond_hash> OP_CHECKCRYPTOCONDITION
-            // else 
-            // <cond_hash> OP_CHECKCRYPTOCONDITION
-            CScript normal_dest;
-            UniValue dest_arg = find_value(condJSON, "address");
-            if ( !dest_arg.isNull() ) {
-                destination = DecodeDestination(dest_arg.get_str());
-                normal_dest = GetScriptForDestination(destination);
-            }
-
-            std::string valStr = condJSON.write(0, 0);
-            char* valChr = const_cast<char*> (valStr.c_str());
-            char ccjsonerr[1000] = "\0";
-            CC *mycond = cc_conditionFromJSONString(valChr, ccjsonerr);
-            if ( mycond == NULL )
-                throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Unable to parse condition: ") + ccjsonerr);
-            rawTx.vout.push_back(CTxOut(nAmount, normal_dest + CCPubKey(mycond) + data));
+        } else if (name_ == "cc")  {
+            UniValue jcc = sendTo[name_]["condition"];
+            CAmount amount = AmountFromValue(sendTo[name_]["amount"]);
+            std::string scc = jcc.write();
+            std::cerr << __func__ << " scc=" << scc << std::endl;
+            char errcc[128] = "";
+            CC *cc = cc_conditionFromJSONString(scc.c_str(), errcc);
+            if (cc == nullptr)
+                throw std::runtime_error(std::string("could not parse cryptocondition: ") + errcc);
+            std::cerr << __func__ << " cc parsed okay" << std::endl;
+            CTxOut out = CTxOut(amount, CCPubKey(cc));
+            rawTx.vout.push_back(out);
+            cc_free(cc);
         } else {
             destination = DecodeDestination(name_);
             if (IsValidDestination(destination)) {
@@ -1088,6 +1071,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
             "         \"vout\":n,                  (numeric, required) The output number\n"
             "         \"scriptPubKey\": \"hex\",   (string, required) script key\n"
             "         \"redeemScript\": \"hex\",   (string, required for P2SH) redeem script\n"
+            "         \"condition\": \"<condition>\",   (string, required for P2SH) redeem script\n"
             "         \"amount\": value            (numeric, required) The amount spent\n"
             "       }\n"
             "       ,...\n"
@@ -1209,7 +1193,15 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
 
     // Add previous txouts given in the RPC call:
     if (params.size() > 1 && !params[1].isNull()) {
-        UniValue prevTxs = params[1].get_array();
+        UniValue prevTxs;
+        if (params[1].isArray())
+            prevTxs = params[1].get_array();
+        else if (params[1].getType() == UniValue::VSTR)  { // json in quoted string '{...}'
+            if (!prevTxs.read(params[1].get_str()) || !prevTxs.isArray())
+                throw runtime_error("prevTxs must be a valid json array\n");
+        }
+        else 
+            throw runtime_error("prevTxs must be a valid json array\n");
         for (size_t idx = 0; idx < prevTxs.size(); idx++) {
             const UniValue& p = prevTxs[idx];
             if (!p.isObject())
@@ -1217,7 +1209,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
 
             UniValue prevOut = p.get_obj();
 
-            UniValue cond = find_value(prevOut, "condition");
+            UniValue uvcond = find_value(prevOut, "condition");
             RPCTypeCheckObj(prevOut, boost::assign::map_list_of("txid", UniValue::VSTR)("vout", UniValue::VNUM));
             uint256 txid = ParseHashO(prevOut, "txid");
 
@@ -1226,7 +1218,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "vout must be positive");
 
 
-            if ( cond.isNull() ) {
+            if ( uvcond.isNull() ) {
 
                 RPCTypeCheckObj(prevOut, boost::assign::map_list_of("scriptPubKey", UniValue::VSTR));
 
@@ -1277,32 +1269,51 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
                 RPCTypeCheckObj(prevOut, boost::assign::map_list_of("amount", UniValue::VNUM));
 
                 CAmount prevAmount = AmountFromValue(find_value(prevOut, "amount"));
+                std::cerr << __func__ << " prevOut amount=" << prevAmount << std::endl;
                 // FIXME Alright - probably an intended way of doing this, research scott's initial commits
-                std::string valStr = cond.write(0, 0);
-                char* valChr = const_cast<char*> (valStr.c_str());
+                std::string scond = uvcond.write(0, 0);
+                //char* valChr = const_cast<char*> (valStr.c_str());
                 char ccjsonerr[1000] = "\0";
-                CC *mycond = cc_conditionFromJSONString(valChr, ccjsonerr);
+                CC *mycond = cc_conditionFromJSONString(scond.c_str(), ccjsonerr);
 
                 // "{}" or similar was provided 
                 if ( mycond == NULL ) throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Empty(NULL) condition provided");
 
                 PrecomputedTransactionData txdata(mergedTx);
                 uint256 sighash = SignatureHash(CCPubKey(mycond), mergedTx, idx, SIGHASH_ALL,prevAmount,consensusBranchId, &txdata);
+                std::cerr << __func__ << " sighash=" << sighash.GetHex() << std::endl;
 
-                UniValue keys = params[2].get_array();
+                UniValue keys;
+                if (params.size() < 2)
+                    throw runtime_error("empty keys\n");
+                if (params[2].isArray())
+                    keys = params[2].get_array();
+                else if (params[2].getType() == UniValue::VSTR)  { // json in quoted string '{...}'
+                    if (!keys.read(params[2].get_str()) || !keys.isArray())
+                        throw runtime_error("keys must be a valid json array\n");
+                }
+                else 
+                    throw runtime_error("keys must be a valid json array\n");
 
                 std::vector<UniValue> key_entries = keys.getValues();
+                //if (key_entries.empty())
+                //    throw runtime_error("keys empty\n");
 
                 // sign with every key provided
                 // FIXME Alright - integrate wallet support here
                 //     we can check if we have a privkey of each secp256k1 node
                 for (unsigned int i = 0; i < key_entries.size(); i++) {
                     CKey priv = DecodeSecret(key_entries[i].get_str().c_str());
+                    if (!priv.IsValid())
+                        throw runtime_error("privkey invalid\n");
+
                     const uint8_t *priv_ptr = priv.begin();
-                    cc_signTreeSecp256k1Msg32(mycond, priv_ptr, (const unsigned char*)&sighash);
+                    if (cc_signTreeSecp256k1Msg32(mycond, priv_ptr, sighash.begin()) == 0)
+                        throw runtime_error("could not sign cc input");
                 }
 
                 mergedTx.vin[idx].scriptSig = CCSig(mycond);
+                std::cerr << __func__ << " CCPubKey(mycond)=" << CCPubKey(mycond).ToString() << std::endl;
             }
         }
     }

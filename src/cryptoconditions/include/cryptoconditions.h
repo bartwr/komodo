@@ -64,7 +64,7 @@ typedef struct CC {
         struct { uint8_t *prefix; size_t prefixLength; struct CC *subcondition;
                  size_t maxMessageLength; };
         // eval
-        struct { uint8_t *code; size_t codeLength; uint8_t *param; size_t paramLength; };
+        struct { uint8_t *code; size_t codeLength; uint8_t *param; size_t paramLength; uint8_t do_not_fulfill;};
         // anon
         struct { uint8_t fingerprint[32]; uint32_t subtypes; unsigned long cost; 
                  struct CCType *conditionType; };

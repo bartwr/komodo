@@ -165,9 +165,12 @@ static Fulfillment_t *thresholdToFulfillment(const CC *cond) {
 
     int needed = cond->threshold;
 
+
     for (int i=0; i<cond->size; i++) {
         sub = subconditions[i];
-        if (needed && (fulfillment = asnFulfillmentNew(sub)) != NULL) {
+        char *substr = cc_conditionToJSONString(sub);
+
+        if (needed && (fulfillment = asnFulfillmentNew(sub)) != NULL && !sub->do_not_fulfill) {
             asn_set_add(&tf->subfulfillments, fulfillment);
             needed--;
         } else {
@@ -179,6 +182,9 @@ static Fulfillment_t *thresholdToFulfillment(const CC *cond) {
 
     if (needed) {
         ASN_STRUCT_FREE(asn_DEF_ThresholdFulfillment, tf);
+        // FIXME Alright - really should pass this error back on the rpc interface somehow
+        // just gives generic 'Crypto-Condition payload is invalid' message for now
+        fprintf(stderr, "Threshold unfulfilled!\n"); 
         return NULL;
     }
 

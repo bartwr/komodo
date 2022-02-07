@@ -154,7 +154,13 @@ void dumpStr(unsigned char *str, size_t len) {
     fprintf(stderr, "\n");
 }
 
-
+int checkBool(const cJSON *value, char *key, char *err) {
+    if (!cJSON_IsBool(value)) {
+        sprintf(err, "%s must be a true or false", key);
+        return 0;
+    }
+    return 1;
+}
 
 int checkString(const cJSON *value, char *key, char *err) {
     if (value == NULL) {
@@ -290,6 +296,17 @@ void jsonAddHex(cJSON *params, char *key, unsigned char *bin, size_t size) {
     free(hex);
 }
 
+int jsonGetBoolOptional(const cJSON *params, char *key, char *err, int *boolean) {
+    cJSON *item = cJSON_GetObjectItem(params, key);
+    if (!item) {
+        return 0;
+    }
+    if (checkBool(item, key, err)){
+        boolean = cJSON_IsTrue(item);
+    }
+
+    return boolean;
+}
 
 int jsonGetHexOptional(const cJSON *params, char *key, char *err, unsigned char **data, size_t *size) {
     cJSON *item = cJSON_GetObjectItem(params, key);
