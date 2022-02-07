@@ -31,8 +31,6 @@ static void evalFingerprint(const CC *cond, uint8_t *out) {
     unsigned char preimage[64];
     sha256(cond->code, cond->codeLength, codeHash);
     sha256(cond->param, cond->paramLength, paramHash);
-    fprintf(stderr, "codeHash len %d\n", codeHash );
-    fprintf(stderr, "paramHash len %d\n", paramHash );
 
     strcat(preimage, codeHash);
     strcat(preimage, paramHash);
@@ -45,18 +43,6 @@ static unsigned long evalCost(const CC *cond) {
     return 1048576;  // Pretty high
 }
 
-/*
-so....
-
-I want to take a string ( char* some_string ) 
-then...
-
-check that all the characters are valid hex...
-then...
-
-store that as a byte array
-
-*/
 
 static CC *evalFromJSON(const cJSON *params, char *err) {
     size_t codeLength;
