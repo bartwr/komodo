@@ -21,10 +21,30 @@
 #include "CCTokelData.h"
 
 template<class T, class A>
-UniValue AssetOrders(uint256 refassetid, CPubKey pk)
+UniValue AssetOrders(uint256 refassetid, const CPubKey &mypk, const UniValue &params)
 {
 	UniValue result(UniValue::VARR);  
     const char *funcname = __func__;
+    const bool CC_OUTPUTS_TRUE = true;
+
+    int32_t beginHeight = 0;
+    int32_t endHeight = 0;
+    CPubKey checkPK = mypk;
+    std::string checkAddr;
+    if (params.exists("beginHeight"))
+        beginHeight = atoi(params["beginHeight"].getValStr().c_str());
+    if (params.exists("endHeight"))
+        endHeight = atoi(params["endHeight"].getValStr().c_str());
+    if (params.exists("pubkey"))
+        checkPK = pubkey2pk(ParseHex(params["pubkey"].getValStr().c_str()));
+
+    if (beginHeight > 0 || endHeight > 0)    
+    {
+        if (endHeight <= 0) {
+            LOCK(cs_main);
+            endHeight = chainActive.Height();  // if beginheight set but endHeight unset then set endHeight to the tip
+        }
+    }
 
     struct CCcontract_info *cpAssets, assetsC;
     struct CCcontract_info *cpTokens, tokensC;
@@ -32,9 +52,9 @@ UniValue AssetOrders(uint256 refassetid, CPubKey pk)
     cpAssets = CCinit(&assetsC, A::EvalCode());
     cpTokens = CCinit(&tokensC, T::EvalCode());
 
-	auto addOrders = [&](struct CCcontract_info *cp, const CAddressUnspentKey &key)
+	auto addOrders = [&](struct CCcontract_info *cp, uint256 ordertxid)
 	{
-		uint256 txid, hashBlock, assetid;
+		uint256 hashBlock, assetid;
 		CAmount unit_price;
 		vscript_t origpubkey;
 		CTransaction ordertx;
@@ -42,10 +62,9 @@ UniValue AssetOrders(uint256 refassetid, CPubKey pk)
 		char origaddr[KOMODO_ADDRESS_BUFSIZE], origtokenaddr[KOMODO_ADDRESS_BUFSIZE];
         int32_t expiryHeight;
 
-        txid = key.txhash;
-        LOGSTREAM(ccassets_log, CCLOG_DEBUG2, stream << funcname << " checking txid=" << txid.GetHex() << std::endl);
-        if (!myGetTransaction(txid, ordertx, hashBlock)) {
-            LOGSTREAM(ccassets_log, CCLOG_DEBUG2, stream << funcname <<" could not load order txid=" << txid.GetHex() << std::endl);
+        LOGSTREAM(ccassets_log, CCLOG_DEBUG2, stream << funcname << " checking txid=" << ordertxid.GetHex() << std::endl);
+        if (!myGetTransaction(ordertxid, ordertx, hashBlock)) {
+            LOGSTREAM(ccassets_log, CCLOG_DEBUG2, stream << funcname <<" could not load order txid=" << ordertxid.GetHex() << std::endl);
             return;
         }
 
@@ -53,32 +72,36 @@ UniValue AssetOrders(uint256 refassetid, CPubKey pk)
         {
             LOGSTREAM(ccassets_log, CCLOG_DEBUG2, stream << funcname << " checking ordertx.vout.size()=" << ordertx.vout.size() << " funcid=" << (char)(funcid ? funcid : ' ') << " assetid=" << assetid.GetHex() << std::endl);
 
-            if (!pk.IsValid() && (refassetid == zeroid || assetid == refassetid) || // tokenorders
-                pk.IsValid() && pk == pubkey2pk(origpubkey))  // mytokenorders
+            if ((!checkPK.IsValid() || checkPK == pubkey2pk(origpubkey)) && (refassetid.IsNull() || assetid == refassetid)) 
             {
                 uint256 spenttxid;
-                uint256 init_txid = txid;
+                uint256 init_txid = ordertxid;
                 int32_t spentvin;
                 int32_t height;
                 // try to get unspent partially filled order (if it is a search by global assets address)
-                while(CCgetspenttxid(spenttxid, spentvin, height, init_txid, ASSETS_GLOBALADDR_VOUT) == 0 && IsTxidInActiveChain(spenttxid)) {
+                while(CCgetspenttxid(spenttxid, spentvin, height, init_txid, ASSETS_GLOBALADDR_VOUT) == 0) 
+                {
+                    {
+                        LOCK(cs_main);
+                        if (!IsTxidInActiveChain(spenttxid)) break;
+                    }
                     init_txid = spenttxid;
                 }
-                if (init_txid != txid) {
+                if (init_txid != ordertxid) {
                     // if it is a filled order load it
-                    txid = init_txid;
-                    if (!myGetTransaction(txid, ordertx, hashBlock)) {
-                        LOGSTREAM(ccassets_log, CCLOG_DEBUG2, stream << funcname << " could not load order txid=" << txid.GetHex() << std::endl);
+                    ordertxid = init_txid;
+                    if (!myGetTransaction(ordertxid, ordertx, hashBlock)) {
+                        LOGSTREAM(ccassets_log, CCLOG_DEBUG2, stream << funcname << " could not load order txid=" << ordertxid.GetHex() << std::endl);
                         return;
                     }
                     if ((funcid = A::DecodeAssetTokenOpRet(ordertx.vout.back().scriptPubKey, evalCode, assetid, unit_price, origpubkey, expiryHeight)) == 0) {
-                        LOGSTREAM(ccassets_log, CCLOG_DEBUG2, stream << funcname << " could not decode order txid=" << txid.GetHex() << std::endl);
+                        LOGSTREAM(ccassets_log, CCLOG_DEBUG2, stream << funcname << " could not decode order txid=" << ordertxid.GetHex() << std::endl);
                         return;
                     }
                 }
 
                 if (ordertx.vout.size() < 2)  {
-                    LOGSTREAM(ccassets_log, CCLOG_DEBUG2, stream << funcname << " txid skipped " << txid.GetHex() << std::endl);
+                    LOGSTREAM(ccassets_log, CCLOG_DEBUG2, stream << funcname << " txid skipped " << ordertxid.GetHex() << std::endl);
                     return;
                 }
 
@@ -86,7 +109,7 @@ UniValue AssetOrders(uint256 refassetid, CPubKey pk)
 
                 std::string funcidstr(1, (char)funcid);
                 item.push_back(Pair("funcid", funcidstr));
-                item.push_back(Pair("txid", txid.GetHex()));
+                item.push_back(Pair("txid", ordertxid.GetHex()));
                 if (funcid == 'b' || funcid == 'B')
                 {
                     item.push_back(Pair("bidamount", ValueFromAmount(ordertx.vout[0].nValue)));
@@ -95,6 +118,8 @@ UniValue AssetOrders(uint256 refassetid, CPubKey pk)
                 {
                     item.push_back(Pair("askamount", ordertx.vout[0].nValue));
                 }
+                else
+                    return;
                 if (origpubkey.size() == CPubKey::COMPRESSED_PUBLIC_KEY_SIZE)
                 {
                     GetCCaddress(cp, origaddr, pubkey2pk(origpubkey), A::IsMixed());  
@@ -117,51 +142,119 @@ UniValue AssetOrders(uint256 refassetid, CPubKey pk)
                         item.push_back(Pair("price", ValueFromAmount(unit_price)));
                     }
                 }
+                {
+                    LOCK(cs_main);
+                    CBlockIndex *pindex = komodo_getblockindex(hashBlock);
+                    if (pindex)
+                        item.push_back(Pair("blockHeight", pindex->GetHeight()));
+                }
                 if (expiryHeight > 0)
                     item.push_back(Pair("ExpiryHeight", expiryHeight));
 
                 if (ordertx.vout[0].nValue > 0LL) // do not add totally filled orders 
                     result.push_back(item);
-                LOGSTREAM(ccassets_log, CCLOG_DEBUG1, stream << funcname << " added order funcId=" << (char)(funcid ? funcid : ' ') << " key.index=" << key.index << " ordertx.vout[key.index].nValue=" << ordertx.vout[key.index].nValue << " tokenid=" << assetid.GetHex() << std::endl);
+                LOGSTREAM(ccassets_log, CCLOG_DEBUG1, stream << funcname << " added order funcId=" << (char)(funcid ? funcid : ' ') << " orderid=" << ordertxid.GetHex() << " tokenid=" << assetid.GetHex() << std::endl);
             }
         }
 	};
 
-    if (!pk.IsValid()) // get tokenorders (all orders)
+    if (!checkPK.IsValid()) // get tokenorders (all orders)
     {
-        // tokenbids:
-        std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputsCoins;
-        char assetsGlobalAddr[KOMODO_ADDRESS_BUFSIZE];
-        GetCCaddress(cpAssets, assetsGlobalAddr, GetUnspendable(cpAssets, NULL), A::IsMixed());
-        SetCCunspents(unspentOutputsCoins, assetsGlobalAddr, true);
-        for (std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> >::const_iterator itCoins = unspentOutputsCoins.begin();
-            itCoins != unspentOutputsCoins.end();
-            itCoins++)
-            addOrders(cpAssets, itCoins->first);
-        
-        // tokenasks:
-        std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputsTokens;
-        char tokensAssetsGlobalAddr[KOMODO_ADDRESS_BUFSIZE];
-        GetTokensCCaddress(cpAssets, tokensAssetsGlobalAddr, GetUnspendable(cpAssets, NULL), A::IsMixed());
-        SetCCunspents(unspentOutputsTokens, tokensAssetsGlobalAddr, true);
-        for (std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> >::const_iterator itTokens = unspentOutputsTokens.begin();
-            itTokens != unspentOutputsTokens.end();
-            itTokens++)
-            addOrders(cpAssets, itTokens->first);
+        if (beginHeight > 0 || endHeight > 0)    
+        {
+            // tokenbids (using addressindex sorted by height):
+            std::vector<std::pair<CAddressIndexKey, CAmount>> addressIndexOutputsCoins;
+            char assetsGlobalAddr[KOMODO_ADDRESS_BUFSIZE];
+            GetCCaddress(cpAssets, assetsGlobalAddr, GetUnspendable(cpAssets, NULL), A::IsMixed());
+            SetAddressIndexOutputs(addressIndexOutputsCoins, assetsGlobalAddr, CC_OUTPUTS_TRUE, beginHeight, endHeight);
+            LOGSTREAMFN(ccassets_log, CCLOG_DEBUG1, stream << "SetAddressIndexOutputs addressIndexOutputsCoins.size()=" << addressIndexOutputsCoins.size() << std::endl);
+            for (const auto &outputsCoins : addressIndexOutputsCoins) 
+            {
+                if (!outputsCoins.first.spending)  {
+                    bool isTxidInActiveChain = false;
+                    {
+                        LOCK(cs_main);
+                        isTxidInActiveChain = IsTxidInActiveChain(outputsCoins.first.txhash);
+                    }
+                    if (isTxidInActiveChain)
+                        addOrders(cpAssets, outputsCoins.first.txhash);    
+                }
+            }
+
+            // tokenasks (using addressindex sorted by height):
+            std::vector<std::pair<CAddressIndexKey, CAmount>> addressIndexOutputsTokens;
+            char tokensAssetsGlobalAddr[KOMODO_ADDRESS_BUFSIZE];
+            GetTokensCCaddress(cpAssets, tokensAssetsGlobalAddr, GetUnspendable(cpAssets, NULL), A::IsMixed());
+            SetAddressIndexOutputs(addressIndexOutputsTokens, tokensAssetsGlobalAddr, CC_OUTPUTS_TRUE, beginHeight, endHeight);
+            LOGSTREAMFN(ccassets_log, CCLOG_DEBUG1, stream << "SetAddressIndexOutputs addressIndexOutputsTokens.size()=" << addressIndexOutputsTokens.size() << std::endl);
+            for (const auto &outputsTokens : addressIndexOutputsTokens) 
+            {
+                if (!outputsTokens.first.spending)  {
+                    bool isTxidInActiveChain = false;
+                    {
+                        LOCK(cs_main);
+                        isTxidInActiveChain = IsTxidInActiveChain(outputsTokens.first.txhash);
+                    }
+                    if (isTxidInActiveChain)
+                        addOrders(cpAssets, outputsTokens.first.txhash);  
+                }  
+            }
+        }
+        else
+        {
+            // tokenbids:
+            std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputsCoins;
+            char assetsGlobalAddr[KOMODO_ADDRESS_BUFSIZE];
+            GetCCaddress(cpAssets, assetsGlobalAddr, GetUnspendable(cpAssets, NULL), A::IsMixed());
+            SetCCunspents(unspentOutputsCoins, assetsGlobalAddr, CC_OUTPUTS_TRUE);
+            for (const auto & unspentCoins : unspentOutputsCoins)
+            {
+                bool isTxidInActiveChain = false;
+                {
+                    LOCK(cs_main);
+                    isTxidInActiveChain = IsTxidInActiveChain(unspentCoins.first.txhash);
+                }
+                if (isTxidInActiveChain)
+                    addOrders(cpAssets, unspentCoins.first.txhash);
+            }
+            
+            // tokenasks:
+            std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputsTokens;
+            char tokensAssetsGlobalAddr[KOMODO_ADDRESS_BUFSIZE];
+            GetTokensCCaddress(cpAssets, tokensAssetsGlobalAddr, GetUnspendable(cpAssets, NULL), A::IsMixed());
+            SetCCunspents(unspentOutputsTokens, tokensAssetsGlobalAddr, CC_OUTPUTS_TRUE);
+            for (const auto & unspentTokens : unspentOutputsTokens)
+            {
+                bool isTxidInActiveChain = false;
+                {
+                    LOCK(cs_main);
+                    isTxidInActiveChain = IsTxidInActiveChain(unspentTokens.first.txhash);
+                }
+                if (isTxidInActiveChain)
+                    addOrders(cpAssets, unspentTokens.first.txhash);
+            }
+        }
     }
     else 
     {
         // mytokenorders, use marker on my pk :
         std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentsMyAddr;
         char assetsMyAddr[KOMODO_ADDRESS_BUFSIZE];
-        GetCCaddress1of2(cpAssets, assetsMyAddr, pk, GetUnspendable(cpAssets, NULL), A::IsMixed());
+        GetCCaddress1of2(cpAssets, assetsMyAddr, checkPK, GetUnspendable(cpAssets, NULL), A::IsMixed());
         SetCCunspents(unspentsMyAddr, assetsMyAddr, true);
-        for (std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> >::const_iterator itOrders = unspentsMyAddr.begin();
-            itOrders != unspentsMyAddr.end();
-            itOrders++)
-            addOrders(cpAssets, itOrders->first);
+        for (const auto & orders : unspentsMyAddr)
+        {
+            bool isTxidInActiveChain = false;
+            {
+                LOCK(cs_main);
+                isTxidInActiveChain = IsTxidInActiveChain(orders.first.txhash);
+            }
+            // also check begin/end heights:
+            if (isTxidInActiveChain && (beginHeight <= 0 || orders.second.blockHeight >= beginHeight) && (endHeight <= 0 || orders.second.blockHeight <= endHeight))
+                addOrders(cpAssets, orders.first.txhash);
+        }
     }
-    return(result);
+    return result;
 }
 
 // rpc tokenbid implementation, locks 'bidamount' coins for the 'pricetotal' of tokens

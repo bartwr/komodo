@@ -191,13 +191,18 @@ UniValue tokenv2infotokel(const UniValue& params, bool fHelp, const CPubKey& rem
 template <class T, class A>
 UniValue tokenorders(const std::string& name, const UniValue& params, bool fHelp, const CPubKey& remotepk)
 {
+    const static std::set<std::string> acceptable = { "beginHeight", "endHeight", "pubkey"};
     uint256 tokenid;
     const CPubKey emptypk;
 
-    if (fHelp || params.size() > 1)
-        throw runtime_error(name + " [tokenid|'*']\n"
+    if (fHelp || params.size() > 2)
+        throw runtime_error(name + " [tokenid|'*']  [json-params]\n"
                                    "returns tokens orders for the tokenid or all available token orders if tokenid is not set\n"
-                                   "\n");
+                            "json-params - optional json object with params limiting orders to output:\n"
+                            "  { \"beginHeight\": number \"endHeight\": number, \"pubkey\": hexstring }\n"
+                            "  \"beginHeight\", \"endHeight\" - height interval where to search orders, if beginHeight omitted the first block is used, if endHeight omitted the chain tip is used"
+                            "  \"pubkey\" - search orders created by a specific pubkey\n\n");
+
     if (ensure_CCrequirements(A::EvalCode(), remotepk.IsValid()) < 0 || ensure_CCrequirements(T::EvalCode(), remotepk.IsValid()) < 0)
         throw runtime_error(CC_REQUIREMENTS_MSG);
 	if (params.size() >= 1) 
@@ -205,11 +210,26 @@ UniValue tokenorders(const std::string& name, const UniValue& params, bool fHelp
         if (params[0].get_str() != "*")
         {
 		    tokenid = Parseuint256((char *)params[0].get_str().c_str());
-		    if (tokenid == zeroid) 
+		    if (tokenid.IsNull()) 
 			    throw runtime_error("incorrect tokenid\n");
         }
     }
-    return AssetOrders<T, A>(tokenid, emptypk);
+    UniValue jsonParams;
+    if (params.size() >= 2)
+    {
+        if (params[1].getType() == UniValue::VOBJ)
+            jsonParams = params[1].get_array();
+        else if (params[1].getType() == UniValue::VSTR)  // json in quoted string '{...}'
+            jsonParams.read(params[1].get_str().c_str());
+        if (jsonParams.getType() != UniValue::VOBJ)
+            throw runtime_error("parameter 2 must be a json object");   
+
+        // check unused params:
+        for (int i = 0; i < jsonParams.getKeys().size(); i ++)
+            if (acceptable.count(jsonParams.getKeys()[i]) == 0)
+                throw runtime_error(std::string("invalid json param") + jsonParams.getKeys()[i]);   
+    }
+    return AssetOrders<T, A>(tokenid, emptypk, jsonParams);
 }
 
 UniValue tokenorders(const UniValue& params, bool fHelp, const CPubKey& remotepk)
@@ -235,7 +255,7 @@ UniValue mytokenorders(const std::string& name, const UniValue& params, bool fHe
 
     CPubKey mypk;
     SET_MYPK_OR_REMOTE(mypk, remotepk);
-    return AssetOrders<T, A>(zeroid, mypk);
+    return AssetOrders<T, A>(zeroid, mypk, NullUniValue);
 }
 
 UniValue mytokenorders(const UniValue& params, bool fHelp, const CPubKey& remotepk)
