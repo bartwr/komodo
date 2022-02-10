@@ -61,6 +61,8 @@
         EVAL(EVAL_MINVOUT, 0xf5)  \
         EVAL(EVAL_MAXVIN, 0xf6)  \
         EVAL(EVAL_MINVIN, 0xf7)  \
+        EVAL(EVAL_TRUE, 0xfe)  \
+        EVAL(EVAL_FALSE, 0xff)  \
 
 
 
