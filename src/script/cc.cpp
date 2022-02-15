@@ -102,9 +102,14 @@ CScript CCPubKey(const CC *cond)
 {
     unsigned char buf[1000];
     size_t len = cc_conditionBinary(cond, buf);
-    // FIXME hardcoded test 
     return CScript() << std::vector<unsigned char>(buf, buf+len) << OP_CHECKCRYPTOCONDITION;
-    //return CScript() << std::vector<unsigned char>(buf, buf+len) << OP_NOP10;
+}
+
+CScript CCPubKeyPublic(const CC *cond)
+{
+    unsigned char buf[1000];
+    size_t len = cc_fulfillmentBinary(cond, buf, 10000);
+    return CScript() << std::vector<unsigned char>(buf, buf+len) << OP_CHECKCRYPTOCONDITION;
 }
 
 
