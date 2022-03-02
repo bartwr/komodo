@@ -80,7 +80,7 @@ enum txnouttype
     TX_SCRIPTHASH,
     TX_MULTISIG,
     TX_CRYPTOCONDITION,
-    TX_P2PKHCC,
+    // TX_P2PKHCC, // FIXME Alright - need this if we decide to make this a seperate type
     TX_NULL_DATA,
 };
 

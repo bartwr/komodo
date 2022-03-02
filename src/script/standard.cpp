@@ -149,7 +149,7 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_MULTISIG: return "multisig";
     case TX_NULL_DATA: return "nulldata";
     case TX_CRYPTOCONDITION: return "cryptocondition";
-    case TX_P2PKHCC: return "pubkeyhash_cc";
+    //case TX_P2PKHCC: return "pubkeyhash_cc";
     default: return "invalid";
     }
     return NULL;
@@ -281,16 +281,13 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
             }
             return false;
         }
-        if (scriptPubKey.IsPayToPublicKeyHash_PayToCC())
-        {
-            std::vector<unsigned char> data;
-            if (MatchPayToPubkeyHash_PayToCC(scriptPubKey, data)) { // FIXME add check to condition decodes
-                typeRet = TX_P2PKHCC;
-                vSolutionsRet.push_back(std::move(data));
-                return true;
-            }
+        std::vector<unsigned char> data;
+        // FIXME Alright - check that condition is valid; equivalent of scriptPubKey.MayAcceptCryptoCondition()
+        if (MatchPayToPubkeyHash_PayToCC(scriptPubKey, data)) {
+            typeRet = TX_CRYPTOCONDITION;
+            vSolutionsRet.push_back(std::move(data));
+            return true;
         }
-
     }
 
     std::vector<unsigned char> data;
@@ -306,11 +303,6 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
         return true;
     }
 
-    if (MatchPayToPubkeyHash_PayToCC(scriptPubKey, data)) {
-        typeRet = TX_CRYPTOCONDITION;
-        vSolutionsRet.push_back(std::move(data));
-        return true;
-    }
 
     unsigned int required;
     std::vector<std::vector<unsigned char>> keys;
@@ -437,11 +429,11 @@ bool ExtractDestination(const CScript& _scriptPubKey, CTxDestination& addressRet
             }
             return true;
         }
-        if ( whichType == TX_P2PKHCC)
-        {
-            addressRet = CKeyID(uint160(vSolutions[0]));
-            return true;
-        }
+        //if ( whichType == TX_P2PKHCC)
+        //{
+        //    addressRet = CKeyID(uint160(vSolutions[0]));
+        //    return true;
+        // FIXME Alright - need this if we choose to make this a seperate type
     }
     // Multisig txns have more than one address...
     return false;
