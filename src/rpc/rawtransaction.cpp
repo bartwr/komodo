@@ -859,6 +859,29 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp, const CPubKey&
             CTxOut out = CTxOut(amount, CCPubKey(cc));
             rawTx.vout.push_back(out);
             cc_free(cc);
+        } else if (name_ == "pubkeyhash_cc")  {
+            CTxDestination normal_dest;
+            CScript normal_spk, cc_spk;
+            UniValue jaddr = sendTo[name_]["address"];
+            normal_dest = DecodeDestination(jaddr.getValStr());
+            if (IsValidDestination(normal_dest)) {
+                normal_spk = GetScriptForDestination(normal_dest);
+            } else {
+               throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("normal address invalid or missing"));
+            }
+            UniValue jcc = sendTo[name_]["condition"];
+            CAmount amount = AmountFromValue(sendTo[name_]["amount"]);
+            std::string scc = jcc.write();
+            char errcc[128] = "";
+            CC *cc = cc_conditionFromJSONString(scc.c_str(), errcc);
+            if (cc == nullptr)
+                throw std::runtime_error(std::string("could not parse cryptocondition: ") + errcc);
+
+            normal_spk.back() = OP_CHECKSIGVERIFY;
+            cc_spk = CCPubKey(cc);
+            CTxOut out = CTxOut(amount, normal_spk + cc_spk);
+            rawTx.vout.push_back(out);
+            cc_free(cc);
         } else {
             destination = DecodeDestination(name_);
             if (IsValidDestination(destination)) {
