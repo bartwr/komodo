@@ -45,24 +45,26 @@ static CC *evalFromJSON(const cJSON *params, char *err) {
     size_t eval_params_len;
 
     cJSON *eval_params_json = cJSON_GetObjectItem(params, "params");
-    if (!eval_params_json || !cJSON_IsString(eval_params_json)) {
-        strcpy(err, "\"params\" must be a string");
-        return NULL;
-    }
 
-    // FIXME - Alright 
-    // we should check that this is valid hex and use it literally as "cond->param"
-    // we are wasting space by converting values to ascii and back
-    char* param_string = cJSON_PrintUnformatted( eval_params_json );
-    // this adds " to beginning and end?!
-    for (int i = 1; i < strlen(param_string)-1; i++) {
-        if (!isxdigit(param_string[i]))
-        {
-            strcpy(err, "\"params\" must be valid hex string");
+    if (eval_params_json) {
+        if (!cJSON_IsString(eval_params_json)) {
+            strcpy(err, "\"params\" must be a string");
             return NULL;
         }
-    }
 
+        // FIXME - Alright
+        // we should check that this is valid hex and use it literally as "cond->param"
+        // we are wasting space by converting values to ascii and back
+        char* param_string = cJSON_PrintUnformatted( eval_params_json );
+        // this adds " to beginning and end?!
+        for (int i = 1; i < strlen(param_string)-1; i++) {
+            if (!isxdigit(param_string[i]))
+            {
+                strcpy(err, "\"params\" must be valid hex string");
+                return NULL;
+            }
+        }
+    }
 
     if (!jsonGetBase64(params, "code", err, &code, &codeLength)) {
         return NULL;
