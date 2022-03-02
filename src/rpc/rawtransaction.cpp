@@ -877,9 +877,8 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp, const CPubKey&
             if (cc == nullptr)
                 throw std::runtime_error(std::string("could not parse cryptocondition: ") + errcc);
 
-            normal_spk.back() = OP_CHECKSIGVERIFY;
-            cc_spk = CCPubKey(cc);
-            CTxOut out = CTxOut(amount, normal_spk + cc_spk);
+            CScript spk = P2PKHCCPubKey(cc, normal_spk);
+            CTxOut out = CTxOut(amount, spk);
             rawTx.vout.push_back(out);
             cc_free(cc);
         } else {
@@ -1278,10 +1277,6 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
                 }
             } else {
                 // generic condition signer for Antara - Alright
-                // TODO it should be possible to do scriptPubKeys like...
-                // OP_DUP OP_HASH160 <HASH> OP_EQUALVERIFY OP_CHECKSIGVERIFY <COND_HASH> OP_CHECKCRYPTOCONDITIONX
-                // eg, a normal bitcoin script with additional Antara validation appeneded to it
-                // note: OP_VERIFY would need to happen prior to additional Antara valiadtion
                 RPCTypeCheckObj(prevOut, boost::assign::map_list_of("txid", UniValue::VSTR)("vout", UniValue::VNUM)("condition", UniValue::VOBJ));
 
 

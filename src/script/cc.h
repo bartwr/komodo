@@ -68,6 +68,11 @@ CScript CCPubKey(const CC *cond);
 
 
 /*
+ * Turn a condition into and p2pkh scriptPubKey into P2PKHCC
+ */
+CScript P2PKHCCPubKey(const CC *cond, CScript normal_spk);
+
+/*
  * Turn a condition into a scriptSig
  *
  * Note: This will fail in undefined ways if the condition is missing signatures

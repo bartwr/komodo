@@ -105,6 +105,17 @@ CScript CCPubKey(const CC *cond)
     return CScript() << std::vector<unsigned char>(buf, buf+len) << OP_CHECKCRYPTOCONDITION;
 }
 
+CScript P2PKHCCPubKey(const CC *cond, CScript normal_spk)
+{
+    if (!normal_spk.IsPayToPublicKeyHash()) return CScript();
+    CScript cc_spk;
+    normal_spk.back() = OP_CHECKSIGVERIFY;
+    unsigned char buf[1000];
+    size_t len = cc_conditionBinary(cond, buf);
+    cc_spk = CScript() << std::vector<unsigned char>(buf, buf+len) << OP_CHECKCRYPTOCONDITION;
+    return normal_spk + cc_spk;
+}
+
 CScript CCPubKeyPublic(const CC *cond)
 {
     unsigned char buf[1000];
