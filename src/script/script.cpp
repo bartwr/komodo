@@ -244,14 +244,13 @@ bool CScript::IsPayToPublicKeyHash() const
 bool CScript::IsPayToPublicKeyHash_PayToCC() const
 {
     // Extra-fast test for pay-to-pubkey-hash CScripts:
-    return (this->size() == 77 &&
+    return (
         (*this)[0] == OP_DUP &&
         (*this)[1] == OP_HASH160 &&
         (*this)[2] == 0x14 &&
         (*this)[23] == OP_EQUALVERIFY &&
-        ( (*this)[24] == OP_CHECKSIGVERIFY || (*this)[24] == OP_CHECKSIG ) && 
-        (*this)[25] == 0x2e &&
-        (*this)[77] == OP_CHECKCRYPTOCONDITION
+        (*this)[24] == OP_CHECKSIGVERIFY &&
+        (*this).back() == OP_CHECKCRYPTOCONDITION
          );
 }
 

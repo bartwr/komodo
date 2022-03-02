@@ -149,6 +149,7 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_MULTISIG: return "multisig";
     case TX_NULL_DATA: return "nulldata";
     case TX_CRYPTOCONDITION: return "cryptocondition";
+    case TX_P2PKHCC: return "pubkeyhash_cc";
     default: return "invalid";
     }
     return NULL;
@@ -181,14 +182,13 @@ static bool MatchPayToPubkeyHash(const CScript& script, valtype& pubkeyhash)
 
 static bool MatchPayToPubkeyHash_PayToCC(const CScript& script, valtype& pubkeyhash)
 {
-    if (script.size() == 77 &&
+    if (
         script[0] == OP_DUP &&
         script[1] == OP_HASH160 &&
         script[2] == 0x14 &&
         script[23] == OP_EQUALVERIFY &&
-       (script[24] == OP_CHECKSIGVERIFY || script[24] == OP_CHECKSIG ) && 
-        script[25] == 0x2e &&
-        script[72] == OP_CHECKCRYPTOCONDITION ) {
+        script[24] == OP_CHECKSIGVERIFY &&
+        script.back() == OP_CHECKCRYPTOCONDITION ) {
         pubkeyhash = valtype(script.begin () + 3, script.begin() + 23);
         return true;
     }
@@ -281,6 +281,16 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
             }
             return false;
         }
+        if (scriptPubKey.IsPayToPublicKeyHash_PayToCC())
+        {
+            std::vector<unsigned char> data;
+            if (MatchPayToPubkeyHash_PayToCC(scriptPubKey, data)) { // FIXME add check to condition decodes
+                typeRet = TX_P2PKHCC;
+                vSolutionsRet.push_back(std::move(data));
+                return true;
+            }
+        }
+
     }
 
     std::vector<unsigned char> data;
@@ -412,19 +422,26 @@ bool ExtractDestination(const CScript& _scriptPubKey, CTxDestination& addressRet
         return true;
     }
 
-    else if (IsCryptoConditionsEnabled() != 0 && whichType == TX_CRYPTOCONDITION)
-    {
-        if (vSolutions.size() > 1 && !komodo_is_vSolutionsFixActive()) // allow this temporarily before the HF; actually this is incorrect to use opdrop's pubkey as the address
+    else if (IsCryptoConditionsEnabled() != 0 ){
+        if ( whichType == TX_CRYPTOCONDITION)
         {
-            CPubKey pk = CPubKey((vSolutions[1]));
-            addressRet = pk;
-            return pk.IsValid();
+            if (vSolutions.size() > 1 && !komodo_is_vSolutionsFixActive()) // allow this temporarily before the HF; actually this is incorrect to use opdrop's pubkey as the address
+            {
+                CPubKey pk = CPubKey((vSolutions[1]));
+                addressRet = pk;
+                return pk.IsValid();
+            }
+            else
+            {
+                addressRet = CKeyID(uint160(vSolutions[0]));
+            }
+            return true;
         }
-        else
+        if ( whichType == TX_P2PKHCC)
         {
             addressRet = CKeyID(uint160(vSolutions[0]));
+            return true;
         }
-        return true;
     }
     // Multisig txns have more than one address...
     return false;

@@ -80,6 +80,7 @@ enum txnouttype
     TX_SCRIPTHASH,
     TX_MULTISIG,
     TX_CRYPTOCONDITION,
+    TX_P2PKHCC,
     TX_NULL_DATA,
 };
 
