@@ -1232,6 +1232,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
             UniValue prevOut = p.get_obj();
 
             UniValue uvcond = find_value(prevOut, "condition");
+            UniValue p2pkh_cond = find_value(prevOut, "p2pkh_cc");
             RPCTypeCheckObj(prevOut, boost::assign::map_list_of("txid", UniValue::VSTR)("vout", UniValue::VNUM));
             uint256 txid = ParseHashO(prevOut, "txid");
 
@@ -1240,7 +1241,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "vout must be positive");
 
 
-            if ( uvcond.isNull() ) {
+            if ( uvcond.isNull() && p2pkh_cond.isNull() ) {
 
                 RPCTypeCheckObj(prevOut, boost::assign::map_list_of("scriptPubKey", UniValue::VSTR));
 
@@ -1276,6 +1277,8 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
                     }
                 }
             } else {
+                bool p2pkhcc = uvcond.isNull() ? 1 : 0;
+
                 // generic condition signer for Antara - Alright
                 RPCTypeCheckObj(prevOut, boost::assign::map_list_of("txid", UniValue::VSTR)("vout", UniValue::VNUM)("condition", UniValue::VOBJ));
 
@@ -1287,18 +1290,35 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp, const CPubKey& m
                 RPCTypeCheckObj(prevOut, boost::assign::map_list_of("amount", UniValue::VNUM));
 
                 CAmount prevAmount = AmountFromValue(find_value(prevOut, "amount"));
-                std::cerr << __func__ << " prevOut amount=" << prevAmount << std::endl;
-                // FIXME Alright - probably an intended way of doing this, research scott's initial commits
-                std::string scond = uvcond.write(0, 0);
-                //char* valChr = const_cast<char*> (valStr.c_str());
+
+                CScript spk;
                 char ccjsonerr[1000] = "\0";
-                CC *mycond = cc_conditionFromJSONString(scond.c_str(), ccjsonerr);
+                std::string scond;
+                CC *mycond;
+
+                if (!p2pkhcc) {
+                    scond = uvcond.write(0, 0);
+                    mycond = cc_conditionFromJSONString(scond.c_str(), ccjsonerr);
+                    spk = CCPubKey(mycond);
+                } else {
+                    CScript normal_spk;
+                    CTxDestination normal_dest;
+                    UniValue uvaddr = find_value(p2pkh_cond, "address");
+                    normal_dest = DecodeDestination(uvaddr.getValStr());
+                    if (IsValidDestination(normal_dest) ) {
+                        normal_spk = GetScriptForDestination(normal_dest);
+                    } else throw runtime_error("p2pkhcc address invalid\n");
+                    scond = p2pkh_cond.write(0, 0);
+                    mycond = cc_conditionFromJSONString(scond.c_str(), ccjsonerr);
+                    spk = P2PKHCCPubKey(mycond, normal_spk);
+                    if (spk == CScript()) throw runtime_error("p2pkhcc address invalid, must be p2pkh\n");
+                }
 
                 // "{}" or similar was provided 
                 if ( mycond == NULL ) throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Empty(NULL) condition provided");
 
                 PrecomputedTransactionData txdata(mergedTx);
-                uint256 sighash = SignatureHash(CCPubKey(mycond), mergedTx, idx, SIGHASH_ALL,prevAmount,consensusBranchId, &txdata);
+                uint256 sighash = SignatureHash(spk, mergedTx, idx, SIGHASH_ALL,prevAmount,consensusBranchId, &txdata);
                 std::cerr << __func__ << " sighash=" << sighash.GetHex() << std::endl;
 
                 UniValue keys;
