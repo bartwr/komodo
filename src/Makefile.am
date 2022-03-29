@@ -31,16 +31,7 @@ BITCOIN_INCLUDES += -I$(srcdir)/snark
 BITCOIN_INCLUDES += -I$(srcdir)/snark/libsnark
 BITCOIN_INCLUDES += -I$(srcdir)/univalue/include
 
-if TARGET_WINDOWS
-LIBBITCOIN_SERVER=libbitcoin_server.a -lcurl
-endif
-if TARGET_DARWIN
-LIBBITCOIN_SERVER=libbitcoin_server.a -lcurl
-endif
-if TARGET_LINUX
-LIBBITCOIN_SERVER=libbitcoin_server.a -lcurl
-endif
-
+LIBBITCOIN_SERVER=libbitcoin_server.a
 LIBBITCOIN_WALLET=libbitcoin_wallet.a
 LIBBITCOIN_COMMON=libbitcoin_common.a
 LIBBITCOIN_CLI=libbitcoin_cli.a
@@ -53,6 +44,7 @@ LIBCRYPTOCONDITIONS=cryptoconditions/libcryptoconditions_core.la
 LIBSNARK=snark/libsnark.a
 LIBUNIVALUE=univalue/libunivalue.la
 LIBZCASH=libzcash.a
+LIBCJSON=libcjson.a
 
 if ENABLE_ZMQ
 LIBBITCOIN_ZMQ=libbitcoin_zmq.a
@@ -90,6 +82,19 @@ $(LIBUNIVALUE): $(wildcard univalue/lib/*)
 
 $(LIBCRYPTOCONDITIONS): $(wildcard cryptoconditions/src/*) $(wildcard cryptoconditions/include/*)
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C $(@D) $(@F) OPTFLAGS="-O2 -march=x86-64 -g "
+
+#%.o: %.c
+#	$(CC) -c -o $@ $<
+
+#$(LIBCJSON): cJSON.o komodo_cJSON.o komodo_cutils.o
+#	$(AR) cr $(LIBCJSON) $^
+
+# libcjson build
+LIBCJSON=libcjson.a
+libcjson_a_SOURCES = cJSON.c \
+  komodo_cJSON.c komodo_cutils.cpp
+libcjson_a_CPPFLAGS=-fPIC
+EXTRA_LIBRARIES += $(LIBCJSON)
 
 # Make is not made aware of per-object dependencies to avoid limiting building parallelization
 # But to build the less dependent modules first, we manually select their order here:
@@ -187,6 +192,7 @@ BITCOIN_CORE_H = \
   crypto/haraka_portable.h \
   crypto/verus_hash.h \
   deprecation.h \
+  fs.h \
   hash.h \
   httprpc.h \
   httpserver.h \
@@ -245,6 +251,7 @@ BITCOIN_CORE_H = \
   txdb.h \
   txmempool.h \
   ui_interface.h \
+  util/asmap.h \
   uint256.h \
   uint252.h \
   undo.h \
@@ -278,6 +285,7 @@ libbitcoin_util_a-clientversion.$(OBJEXT): obj/build.h
 # server: zcashd
 libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
 libbitcoin_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libbitcoin_server_a_CPPFLAGS += -fPIC
 libbitcoin_server_a_SOURCES = \
   sendalert.cpp \
   addrman.cpp \
@@ -290,38 +298,28 @@ libbitcoin_server_a_SOURCES = \
   cc/import.cpp \
   cc/importgateway.cpp \
   cc/CCassetsCore.cpp \
-  cc/old/CCassetsCore_v0.cpp \
-  cc/CCassetstx.cpp \
-  cc/old/CCassetstx_v0.cpp \
   cc/CCcustom.cpp \
   cc/CCtx.cpp \
   cc/CCutils.cpp \
-  cc/CCvalidation.cpp \
   cc/CCtokens.cpp \
-  cc/old/CCtokens_v0.cpp \
   cc/assets.cpp \
-  cc/old/assets_v0.cpp \
   cc/faucet.cpp \
   cc/rewards.cpp \
   cc/dice.cpp \
   cc/lotto.cpp \
   cc/fsm.cpp \
   cc/heir.cpp \
-  cc/old/heir_v0.cpp \
   cc/oracles.cpp \
   cc/prices.cpp \
   cc/pegs.cpp \
-  cc/marmara.cpp \
   cc/payments.cpp \
   cc/gateways.cpp \
   cc/channels.cpp \
   cc/auction.cpp \
   cc/betprotocol.cpp \
-  cc/pricesfeed.cpp \
-  cc/priceslibs/cjsonpointer.cpp \
-  cc/kogs.cpp \
   chain.cpp \
   checkpoints.cpp \
+  fs.cpp \
   crosschain.cpp \
   crosschain_authority.cpp \
   crypto/haraka.h \
@@ -353,9 +351,6 @@ libbitcoin_server_a_SOURCES = \
   rpc/net.cpp \
   rpc/rawtransaction.cpp \
   rpc/server.cpp \
-  rpc/tokensrpc.cpp \
-  rpc/pricesrpc.cpp \
-  rpc/marmararpc.cpp \
   script/serverchecker.cpp \
   script/sigcache.cpp \
   timedata.cpp \
@@ -363,6 +358,7 @@ libbitcoin_server_a_SOURCES = \
   txdb.cpp \
   txmempool.cpp \
   validationinterface.cpp \
+  mini-gmp.c \
   $(BITCOIN_CORE_H) \
   $(LIBZCASH_H)
 
@@ -402,6 +398,9 @@ libbitcoin_wallet_a_SOURCES = \
   transaction_builder.cpp \
   wallet/rpcdisclosure.cpp \
   wallet/rpcdump.cpp \
+  cc/CCtokens.cpp \
+  cc/CCassetsCore.cpp \
+  cc/CCassetstx.cpp \
   cc/CCtx.cpp \
   wallet/rpcwallet.cpp \
   wallet/wallet.cpp \
@@ -485,10 +484,25 @@ libbitcoin_common_a_SOURCES = \
   crypto/verus_hash.h \
   crypto/verus_hash.cpp \
   hash.cpp \
+  hex.c \
   importcoin.cpp \
   key.cpp \
   key_io.cpp \
   keystore.cpp \
+  komodo_structs.cpp \
+  komodo.cpp \
+  komodo_bitcoind.cpp \
+  komodo_ccdata.cpp \
+  komodo_curve25519.cpp \
+  komodo_events.cpp \
+  komodo_gateway.cpp \
+  komodo_globals.cpp \
+  komodo_interest.cpp \
+  komodo_jumblr.cpp \
+  komodo_kv.cpp \
+  komodo_notary.cpp \
+  komodo_pax.cpp \
+  komodo_utils.cpp \  
   netbase.cpp \
   metrics.cpp \
   primitives/block.cpp \
@@ -506,9 +520,7 @@ libbitcoin_common_a_SOURCES = \
   script/standard.cpp \
   transaction_builder.cpp \
   cc/CCtokenutils.cpp \
-  cc/old/CCtokenutils_v0.cpp \
   cc/CCutilbits.cpp \
-  gmp_i64.c \
   $(BITCOIN_CORE_H) \
   $(LIBZCASH_H)
 
@@ -533,11 +545,16 @@ libbitcoin_util_a_SOURCES = \
   utilmoneystr.cpp \
   utilstrencodings.cpp \
   utiltime.cpp \
+  util/asmap.cpp \
   $(BITCOIN_CORE_H) \
   $(LIBZCASH_H)
 
 if GLIBC_BACK_COMPAT
 libbitcoin_util_a_SOURCES += compat/glibc_compat.cpp
+endif
+
+if ENABLE_TESTS
+libbitcoin_server_a_SOURCES += rpc/testtransactions.cpp
 endif
 
 
@@ -584,6 +601,7 @@ komodod_LDADD += $(LIBBITCOIN_WALLET)
 endif
 
 komodod_LDADD += \
+  $(LIBCJSON) \
   $(BOOST_LIBS) \
   $(BDB_LIBS) \
   $(SSL_LIBS) \
@@ -595,7 +613,8 @@ komodod_LDADD += \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBVERUS_CRYPTO) \
   $(LIBVERUS_PORTABLE_CRYPTO) \
-  $(LIBZCASH_LIBS)
+  $(LIBZCASH_LIBS) \
+  -lcurl
 
 if TARGET_DARWIN
 komodod_LDADD += libcc.dylib $(LIBSECP256K1)
@@ -767,7 +786,6 @@ clean-local:
 	-$(MAKE) -C secp256k1 clean
 	-$(MAKE) -C snark clean
 	-$(MAKE) -C univalue clean
-	-$(MAKE) -C cryptoconditions clean
 	rm -f leveldb/*/*.gcno leveldb/helpers/memenv/*.gcno
 	-rm -f config.h
 

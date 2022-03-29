@@ -57,7 +57,6 @@
 
 static bool fDaemon;
 #include "komodo_defs.h"
-#define KOMODO_ASSETCHAIN_MAXLEN 65
 extern char ASSETCHAINS_SYMBOL[KOMODO_ASSETCHAIN_MAXLEN];
 extern int32_t ASSETCHAINS_BLOCKTIME;
 extern uint64_t ASSETCHAINS_CBOPRET;
@@ -108,7 +107,8 @@ void WaitForShutdown(boost::thread_group* threadGroup)
 //
 // Start
 //
-extern int32_t IS_KOMODO_NOTARY,USE_EXTERNAL_PUBKEY;
+extern bool IS_KOMODO_NOTARY;
+extern int32_t USE_EXTERNAL_PUBKEY;
 extern uint32_t ASSETCHAIN_INIT;
 extern std::string NOTARY_PUBKEY;
 int32_t komodo_is_issuer();
@@ -169,32 +169,30 @@ bool AppInit(int argc, char* argv[])
         }
         try
         {
-            ReadConfigFile(mapArgs, mapMultiArgs,1);
+            ReadConfigFile(mapArgs, mapMultiArgs);
         } catch (const missing_zcash_conf& e) {
             fprintf(stderr,
-                    (_("Before starting komodod, you need to create a configuration file:\n"
-                       "%s\n"
-                       "It can be completely empty! That indicates you are happy with the default\n"
-                       "configuration of komodod. But requiring a configuration file to start ensures\n"
-                       "that komodod won't accidentally compromise your privacy if there was a default\n"
-                       "option you needed to change.\n"
-                       "\n"
-                       "You can look at the example configuration file for suggestions of default\n"
-                       "options that you may want to change. It should be in one of these locations,\n"
-                       "depending on how you installed Komodo:\n") +
-                     _("- Source code:  %s\n"
-                       "- .deb package: %s\n")).c_str(),
-                    GetConfigFile().string().c_str(),
-                    "contrib/debian/examples/komodo.conf",
-                    "/usr/share/doc/komodo/examples/komodo.conf");
+                (_("Before starting komodod, you need to create a configuration file:\n"
+                   "%s\n"
+                   "It can be completely empty! That indicates you are happy with the default\n"
+                   "configuration of komodod. But requiring a configuration file to start ensures\n"
+                   "that komodod won't accidentally compromise your privacy if there was a default\n"
+                   "option you needed to change.\n"
+                   "\n"
+                   "You can look at the example configuration file for suggestions of default\n"
+                   "options that you may want to change. It should be in one of these locations,\n"
+                   "depending on how you installed Komodo:\n") +
+                 _("- Source code:  %s\n"
+                   "- .deb package: %s\n")).c_str(),
+                GetConfigFile().string().c_str(),
+                "contrib/debian/examples/komodo.conf",
+                "/usr/share/doc/komodo/examples/komodo.conf");
             return false;
         } catch (const std::exception& e) {
             fprintf(stderr,"Error reading configuration file: %s\n", e.what());
             return false;
         }
-        //extern uint16_t BITCOIND_RPCPORT;
-        //BITCOIND_RPCPORT = GetArg("-rpcport", BaseParams().RPCPort());
-        
+
         // Command-line RPC
         bool fCommandLine = false;
         for (int i = 1; i < argc; i++)

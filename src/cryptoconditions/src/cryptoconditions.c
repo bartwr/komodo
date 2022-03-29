@@ -62,8 +62,8 @@ void appendUriSubtypes(uint32_t mask, unsigned char *buf) {
 
 
 char *cc_conditionUri(const CC *cond) {
-    unsigned char *fp = cond->type->fingerprint(cond);
-    if (!fp) return NULL;
+    unsigned char *fp = calloc(1, 32);
+    cond->type->fingerprint(cond, fp);
 
     unsigned char *encoded = base64_encode(fp, 32);
 
@@ -153,6 +153,8 @@ bool asnCondition(const CC *cond, Condition_t *asn) {
         return 0;
     }
     choice->fingerprint.size = 32;
+    choice->fingerprint.buf = calloc(1, 32);
+    cond->type->fingerprint(cond, choice->fingerprint.buf);
     choice->subtypes = asnSubtypes(cond->type->getSubtypes(cond));
     return 1;
 }

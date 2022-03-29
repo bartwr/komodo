@@ -12,7 +12,7 @@
  * Removal or modification of this copyright notice is prohibited.            *
  *                                                                            *
  ******************************************************************************/
-
+#include "hex.h"
 #include "key_io.h"
 #include "CCinclude.h"
 #include "CCassets.h"
@@ -27,12 +27,10 @@
 #include "CCOracles.h"
 #include "CCPrices.h"
 #include "CCPegs.h"
-#include "CCMarmara.h"
 #include "CCPayments.h"
 #include "CCGateways.h"
 #include "CCtokens.h"
 #include "CCImportGateway.h"
-#include "CCKogs.h"
 
 /*
  CCcustom has most of the functions that need to be extended to create a new CC contract.
@@ -190,17 +188,6 @@ uint8_t PegsCCpriv[32] = { 0x52, 0x56, 0x4c, 0x78, 0x87, 0xf7, 0xa2, 0x39, 0xb0,
 #undef FUNCNAME
 #undef EVALCODE
 
-// Marmara
-#define FUNCNAME IsMarmaraInput
-#define EVALCODE EVAL_MARMARA
-const char *MarmaraCCaddr = "RGLSRDnUqTB43bYtRtNVgmwSSd1sun2te8";
-const char *MarmaraNormaladdr = "RMN25Tn8NNzcyQDiQNuMp8UmwLMFd9thYc";
-char MarmaraCChexstr[67] = { "03afc5be570d0ff419425cfcc580cc762ab82baad88c148f5b028d7db7bfeee61d" };
-uint8_t MarmaraCCpriv[32] = { 0x7c, 0x0b, 0x54, 0x9b, 0x65, 0xd4, 0x89, 0x57, 0xdf, 0x05, 0xfe, 0xa2, 0x62, 0x41, 0xa9, 0x09, 0x0f, 0x2a, 0x6b, 0x11, 0x2c, 0xbe, 0xbd, 0x06, 0x31, 0x8d, 0xc0, 0xb9, 0x96, 0x76, 0x3f, 0x24 };
-#include "CCcustom.inc"
-#undef FUNCNAME
-#undef EVALCODE
-
 // Payments
 #define FUNCNAME IsPaymentsInput
 #define EVALCODE EVAL_PAYMENTS
@@ -254,18 +241,6 @@ uint8_t ImportGatewayCCpriv[32] = { 0x65, 0xef, 0x27, 0xeb, 0x3d, 0xb0, 0xb4, 0x
 #undef FUNCNAME
 #undef EVALCODE
 
-// Kogs
-#define FUNCNAME IsKogsInput
-#define EVALCODE EVAL_KOGS
-const char *KogsCCaddr = "RD3UQofnS7uqa9Z3cKC8cb9c95VvoxnPyo";
-const char *KogsNormaladdr = "RVH1M8ZmT2nPB7MW6726RRsxjY7D5FKQHa";
-char KogsCChexstr[67] = { "03c27db737b92826d37fb43f3fda3d1b1d258cd28b68fe4be605457bf9dd9e0218" };
-uint8_t KogsCCpriv[32] = { 0x9f, 0x9a, 0x85, 0x6d, 0xd9, 0x2b, 0xfe, 0xcb, 0xa1, 0x18, 0xca, 0x51, 0x06, 0x80, 0x87, 0x7f, 0x87, 0xaa, 0xef, 0x9c, 0x6e, 0xa0, 0x21, 0x21, 0xed, 0x1c, 0x89, 0x96, 0xc6, 0xe6, 0x93, 0x21 };
-#include "CCcustom.inc"
-#undef FUNCNAME
-#undef EVALCODE
-
-
 int32_t CClib_initcp(struct CCcontract_info *cp,uint8_t evalcode)
 {
     CPubKey pk; int32_t i; uint8_t pub33[33],check33[33],hash[32]; char CCaddr[64],checkaddr[64],str[67];
@@ -313,9 +288,8 @@ int32_t CClib_initcp(struct CCcontract_info *cp,uint8_t evalcode)
 
 struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
 {
-    // memset(cp, '\0', sizeof(*cp)); <-- it is not good to initialize objects like this. 
-	// special init func now used:
-    cp->init_to_zeros();
+    // important to clear because not all members are always initialized!
+    memset(cp, '\0', sizeof(*cp));
 
     cp->evalcode = evalcode;
     switch ( evalcode )
@@ -416,14 +390,6 @@ struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
             cp->validate = PegsValidate;
             cp->ismyvin = IsPegsInput;
             break;
-        case EVAL_MARMARA:
-            strcpy(cp->unspendableCCaddr,MarmaraCCaddr);
-            strcpy(cp->normaladdr,MarmaraNormaladdr);
-            strcpy(cp->CChexstr,MarmaraCChexstr);
-            memcpy(cp->CCpriv,MarmaraCCpriv,32);
-            cp->validate = MarmaraValidate;
-            cp->ismyvin = IsMarmaraInput;
-            break;
         case EVAL_PAYMENTS:
             strcpy(cp->unspendableCCaddr,PaymentsCCaddr);
             strcpy(cp->normaladdr,PaymentsNormaladdr);
@@ -457,15 +423,6 @@ struct CCcontract_info *CCinit(struct CCcontract_info *cp, uint8_t evalcode)
 			cp->validate = ImportGatewayValidate;
 			cp->ismyvin = IsImportGatewayInput;
 			break;
-		case EVAL_KOGS:
-			strcpy(cp->unspendableCCaddr, KogsCCaddr);
-			strcpy(cp->normaladdr, KogsNormaladdr);
-			strcpy(cp->CChexstr, KogsCChexstr);
-			memcpy(cp->CCpriv, KogsCCpriv, 32);
-			cp->validate = KogsValidate;
-			cp->ismyvin = IsKogsInput;
-			break;
-
         default:
             if ( CClib_initcp(cp,evalcode) < 0 )
                 return(0);

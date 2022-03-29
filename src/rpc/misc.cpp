@@ -25,12 +25,12 @@
 #include "net.h"
 #include "netbase.h"
 #include "rpc/server.h"
-#include "timedata.h"
 #include "txmempool.h"
 #include "util.h"
 #include "notaries_staked.h"
 #include "cc/eval.h"
 #include "cc/CCinclude.h"
+#include "hex.h"
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #include "wallet/walletdb.h"
@@ -65,11 +65,12 @@ int32_t Jumblr_secretaddradd(char *secretaddr);
 uint64_t komodo_interestsum();
 int32_t komodo_longestchain();
 int32_t komodo_notarized_height(int32_t *prevMoMheightp,uint256 *hashp,uint256 *txidp);
-extern bool komodo_txnotarizedconfirmed(uint256 txid,int32_t minconfirms);
+bool komodo_txnotarizedconfirmed(uint256 txid);
 uint32_t komodo_chainactive_timestamp();
 int32_t komodo_whoami(char *pubkeystr,int32_t height,uint32_t timestamp);
 extern uint64_t KOMODO_INTERESTSUM,KOMODO_WALLETBALANCE;
-extern int32_t KOMODO_LASTMINED,JUMBLR_PAUSE,KOMODO_LONGESTCHAIN,IS_STAKED_NOTARY,IS_KOMODO_NOTARY,STAKED_ERA,KOMODO_INSYNC;
+extern bool IS_KOMODO_NOTARY;
+extern int32_t KOMODO_LASTMINED,JUMBLR_PAUSE,KOMODO_LONGESTCHAIN,STAKED_NOTARY_ID,STAKED_ERA,KOMODO_INSYNC;
 extern char ASSETCHAINS_SYMBOL[KOMODO_ASSETCHAIN_MAXLEN];
 uint32_t komodo_segid32(char *coinaddr);
 int64_t komodo_coinsupply(int64_t *zfundsp,int64_t *sproutfundsp,int32_t height);
@@ -78,7 +79,7 @@ int8_t StakedNotaryID(std::string &notaryname, char *Raddress);
 uint64_t komodo_notarypayamount(int32_t nHeight, int64_t notarycount);
 int32_t komodo_notaries(uint8_t pubkeys[64][33],int32_t height,uint32_t timestamp);
 
-#define KOMODO_VERSION "0.5.3"
+#define KOMODO_VERSION "0.7.1"
 #define VERUS_VERSION "0.4.0g"
 extern uint16_t ASSETCHAINS_P2PPORT,ASSETCHAINS_RPCPORT;
 extern uint32_t ASSETCHAINS_CC;
@@ -159,7 +160,7 @@ UniValue getnotarysendmany(const UniValue& params, bool fHelp, const CPubKey& my
     for (int i = 0; i<num_notaries_STAKED[era]; i++)
     {
         char Raddress[18]; uint8_t pubkey33[33];
-        decode_hex(pubkey33,33,(char *)notaries_STAKED[era][i][1]);
+        decode_hex(pubkey33,33,notaries_STAKED[era][i][1]);
         pubkey2addr((char *)Raddress,(uint8_t *)pubkey33);
         ret.push_back(Pair(Raddress,amount));
     }
@@ -206,7 +207,7 @@ UniValue getinfo(const UniValue& params, bool fHelp, const CPubKey& mypk)
             "  \"walletversion\": xxxxx,     (numeric) the wallet version\n"
             "  \"balance\": xxxxxxx,         (numeric) the total Komodo balance of the wallet\n"
             "  \"blocks\": xxxxxx,           (numeric) the current number of blocks processed in the server\n"
-            "  \"timeoffset\": xxxxx,        (numeric) the time offset\n"
+            "  \"timeoffset\": xxxxx,        (numeric) the time offset (deprecated; always 0)\n"
             "  \"connections\": xxxxx,       (numeric) the number of connections\n"
             "  \"proxy\": \"host:port\",     (string, optional) the proxy used by the server\n"
             "  \"difficulty\": xxxxxx,       (numeric) the current difficulty\n"
@@ -287,7 +288,7 @@ UniValue getinfo(const UniValue& params, bool fHelp, const CPubKey& mypk)
 #endif
         obj.push_back(Pair("sapling", ASSETCHAINS_SAPLING));
     }
-    obj.push_back(Pair("timeoffset",    GetTimeOffset()));
+    obj.push_back(Pair("timeoffset",    0));
     obj.push_back(Pair("connections",   (int)vNodes.size()));
     obj.push_back(Pair("proxy",         (proxy.IsValid() ? proxy.proxy.ToStringIPPort() : string())));
     obj.push_back(Pair("testnet",       Params().TestnetToBeDeprecatedFieldRPC()));
@@ -1532,7 +1533,7 @@ UniValue getspentinfo(const UniValue& params, bool fHelp, const CPubKey& mypk)
             "\nArguments:\n"
             "{\n"
             "  \"txid\" (string) The hex string of the txid\n"
-            "  \"index\" (number) The output index in tx\n"
+            "  \"index\" (number) The start block height\n"
             "}\n"
             "\nResult:\n"
             "{\n"
@@ -1577,7 +1578,7 @@ UniValue txnotarizedconfirmed(const UniValue& params, bool fHelp, const CPubKey&
     if (fHelp || params.size() < 1 || params.size() > 1)
     {
         string msg = "txnotarizedconfirmed txid\n"
-            "\nReturns true if transaction is notarized on chain that has dPoW or if confirmation number is greater than 60 on chain taht does not have dPoW.\n"
+            "\nReturns true if transaction is notarized on chain that has dPoW or if confirmation number is greater than 60 on chain that does not have dPoW.\n"
 
             "\nArguments:\n"
             "1. txid      (string, required) Transaction id.\n"
@@ -1599,7 +1600,7 @@ UniValue txnotarizedconfirmed(const UniValue& params, bool fHelp, const CPubKey&
 UniValue decodeccopret(const UniValue& params, bool fHelp, const CPubKey& mypk)
 {
     CTransaction tx; uint256 tokenid,txid,hashblock;
-    std::vector<uint8_t> vopret,vOpretExtra; uint8_t *script;
+    std::vector<uint8_t> vopret,vOpretExtra; uint8_t *script,tokenevalcode;
     UniValue result(UniValue::VOBJ),array(UniValue::VARR); std::vector<CPubKey> pubkeys;
 
     if (fHelp || params.size() < 1 || params.size() > 1)
@@ -1620,12 +1621,11 @@ UniValue decodeccopret(const UniValue& params, bool fHelp, const CPubKey& mypk)
     }
     std::vector<unsigned char> hex(ParseHex(params[0].get_str()));
     CScript scripthex(hex.begin(),hex.end());
-    std::vector<vscript_t>  oprets;
-    if (DecodeTokenOpRetV1(scripthex,tokenid,pubkeys, oprets)!=0  && oprets.size()>0)
+    std::vector<std::pair<uint8_t, vscript_t>>  oprets;
+    if (DecodeTokenOpRet(scripthex,tokenevalcode,tokenid,pubkeys, oprets)!=0 && tokenevalcode==EVAL_TOKENS && oprets.size()>0)
     {
         // seems we need a loop here
-        if (oprets.size() > 0)
-            vOpretExtra = oprets[0];  
+        vOpretExtra = oprets[0].second;  
         UniValue obj(UniValue::VOBJ);
         GetOpReturnData(scripthex,vopret);
         script = (uint8_t *)vopret.data();

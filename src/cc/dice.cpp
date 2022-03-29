@@ -12,7 +12,7 @@
  * Removal or modification of this copyright notice is prohibited.            *
  *                                                                            *
  ******************************************************************************/
-
+#include "hex.h"
 #include "CCdice.h"
 
 // timeout
@@ -936,7 +936,7 @@ bool DiceValidate(struct CCcontract_info *cp,Eval *eval,const CTransaction &tx, 
                     if ( (iswin= DiceIsWinner(entropy,entropyvout,txid,tx,vinTx,hash,sbits,minbet,maxbet,maxodds,timeoutblocks,fundingtxid)) != 0 )
                     {
                         // will only happen for fundingPubKey
-                        if ( KOMODO_INSYNC != 0 && KOMODO_DEALERNODE != 0 )
+                        if ( KOMODO_INSYNC != 0 && IS_KOMODO_DEALERNODE )
                             DiceQueue(iswin,sbits,fundingtxid,txid,tx,entropyvout);
                     }
                     else
@@ -1226,7 +1226,7 @@ bool DicePlanExists(CScript &fundingPubKey,uint256 &fundingtxid,struct CCcontrac
     char CCaddr[64]; uint64_t sbits=0; uint256 txid,hashBlock; CTransaction tx;
     std::vector<uint256> txids;
     GetCCaddress(cp,CCaddr,dicepk);
-    SetCCtxids(txids,cp->normaladdr,false,cp->evalcode,0,zeroid,'F');
+    SetCCtxids(txids,cp->normaladdr,false,cp->evalcode,zeroid,'F');
     if ( fundingtxid != zeroid ) // avoid scan unless creating new funding plan
     {
         //fprintf(stderr,"check fundingtxid\n");
@@ -1321,7 +1321,7 @@ UniValue DiceList()
 {
     UniValue result(UniValue::VARR); std::vector<uint256> txids; struct CCcontract_info *cp,C; uint256 txid,hashBlock; CTransaction vintx; uint64_t sbits; int64_t minbet,maxbet,maxodds,timeoutblocks; char str[65];
     cp = CCinit(&C,EVAL_DICE);
-    SetCCtxids(txids,cp->normaladdr,false,cp->evalcode,0,zeroid,'F');
+    SetCCtxids(txids,cp->normaladdr,false,cp->evalcode,zeroid,'F');
     for (std::vector<uint256>::const_iterator it=txids.begin(); it!=txids.end(); it++)
     {
         txid = *it;
@@ -1788,8 +1788,7 @@ double DiceStatus(uint64_t txfee,char *planstr,uint256 fundingtxid,uint256 bettx
                 {
                     if ( myGetTransaction(betTx.vin[0].prevout.hash,entropyTx,hashBlock) != 0 )
                     {
-                        flag = KOMODO_DEALERNODE != 0;
-                        if ( KOMODO_DEALERNODE != 0 && scriptPubKey == fundingPubKey )
+                        if ( IS_KOMODO_DEALERNODE && scriptPubKey == fundingPubKey )
                         {
                             bettorentropy = DiceGetEntropy(betTx,'B');
                             if ( (iswin= DiceIsWinner(hentropyproof,entropyvout,txid,betTx,entropyTx,bettorentropy,sbits,minbet,maxbet,maxodds,timeoutblocks,fundingtxid)) != 0 )
@@ -1818,7 +1817,7 @@ double DiceStatus(uint64_t txfee,char *planstr,uint256 fundingtxid,uint256 bettx
                 }
             }
         }
-        if ( didinit == 0 && KOMODO_DEALERNODE == 0 && scriptPubKey == fundingPubKey )
+        if ( didinit == 0 && !IS_KOMODO_DEALERNODE && scriptPubKey == fundingPubKey )
         {
             strcpy(_planstr,planstr);
             dealer0_fundingtxid = fundingtxid;
