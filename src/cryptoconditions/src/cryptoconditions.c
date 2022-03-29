@@ -115,8 +115,9 @@ uint32_t fromAsnSubtypes(const ConditionTypes_t types) {
 
 size_t cc_conditionBinary(const CC *cond, unsigned char *buf) {
     Condition_t *asn = calloc(1, sizeof(Condition_t));
-    asnCondition(cond, asn);
+    bool r = asnCondition(cond, asn);
     size_t out = 0;
+    if (!r) goto end;
     asn_enc_rval_t rc = der_encode_to_buffer(&asn_DEF_Condition, asn, buf, 1000);
     if (rc.encoded == -1) goto end;
     out = rc.encoded;
@@ -138,7 +139,7 @@ size_t cc_fulfillmentBinary(const CC *cond, unsigned char *buf, size_t length) {
 }
 
 
-void asnCondition(const CC *cond, Condition_t *asn) {
+bool asnCondition(const CC *cond, Condition_t *asn) {
     asn->present = cc_isAnon(cond) ? cond->conditionType->asnType : cond->type->asnType;
     
     // This may look a little weird - we dont have a reference here to the correct
@@ -147,10 +148,15 @@ void asnCondition(const CC *cond, Condition_t *asn) {
 
     CompoundSha256Condition_t *choice = &asn->choice.thresholdSha256;
     choice->cost = cc_getCost(cond);
+    choice->fingerprint.buf = cond->type->fingerprint(cond);
+    if (choice->fingerprint.buf == 0) {
+        return 0;
+    }
     choice->fingerprint.size = 32;
     choice->fingerprint.buf = calloc(1, 32);
     cond->type->fingerprint(cond, choice->fingerprint.buf);
     choice->subtypes = asnSubtypes(cond->type->getSubtypes(cond));
+    return 1;
 }
 
 
