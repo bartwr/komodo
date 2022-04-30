@@ -883,31 +883,30 @@ UniValue TokenV2List(const UniValue &params)
 	    std::string name, description;
         std::vector<vscript_t>  oprets;
 
-        if (IsTxidInActiveChain(tokenid))
-        {
-            if (DecodeTokenCreateOpRetV2(opreturn, origpubkey, name, description, oprets) != 0) {
-                if (checkPK.IsValid()) { 
-                    if (checkPK == pubkey2pk(origpubkey))
-                        result.push_back(tokenid.GetHex());
-                }
-                else if (!checkAddr.empty())  {
-                    char origaddr[KOMODO_ADDRESS_BUFSIZE];
-                    Getscriptaddress(origaddr, TokensV2::MakeCC1vout(EVAL_TOKENSV2, 0LL, pubkey2pk(origpubkey)).scriptPubKey);
-                    if (checkAddr == origaddr)
-                        result.push_back(tokenid.GetHex());
-                }
-                else 
+        if (DecodeTokenCreateOpRetV2(opreturn, origpubkey, name, description, oprets) != 0) {
+            if (checkPK.IsValid()) { 
+                if (checkPK == pubkey2pk(origpubkey))
                     result.push_back(tokenid.GetHex());
             }
-            else {
-                LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << "DecodeTokenCreateOpRetV2 failed for tokenid=" << tokenid.GetHex() << " opreturn.size=" << opreturn.size() << std::endl);
+            else if (!checkAddr.empty())  {
+                char origaddr[KOMODO_ADDRESS_BUFSIZE];
+                Getscriptaddress(origaddr, TokensV2::MakeCC1vout(EVAL_TOKENSV2, 0LL, pubkey2pk(origpubkey)).scriptPubKey);
+                if (checkAddr == origaddr)
+                    result.push_back(tokenid.GetHex());
             }
+            else 
+                result.push_back(tokenid.GetHex());
+        }
+        else {
+            LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << "DecodeTokenCreateOpRetV2 failed for tokenid=" << tokenid.GetHex() << " opreturn.size=" << opreturn.size() << std::endl);
         }
     };
 
     if (beginHeight > 0 || endHeight > 0)    {
-        if (endHeight <= 0)
+        if (endHeight <= 0) {
+            LOCK(cs_main);
             endHeight = chainActive.Height();
+        }
         std::vector<std::pair<CAddressIndexKey, CAmount>> addressIndexOutputs;
         SetAddressIndexOutputs(addressIndexOutputs, cp->unspendableCCaddr, CC_OUTPUTS_TRUE, beginHeight, endHeight);
         LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << "SetAddressIndexOutputs addressIndexOutputs.size()=" << addressIndexOutputs.size() << std::endl);
@@ -917,8 +916,12 @@ UniValue TokenV2List(const UniValue &params)
                 if (!it.first.spending &&
                     myGetTransaction(it.first.txhash, creationtx, hashBlock) && creationtx.vout.size() > 0)
                 {
-                    LOCK(cs_main);
-                    if (IsBlockHashInActiveChain(hashBlock))
+                    bool isBlockHashInActiveChain = false;
+                    {
+                        LOCK(cs_main);
+                        isBlockHashInActiveChain = IsBlockHashInActiveChain(hashBlock);
+                    }
+                    if (isBlockHashInActiveChain)
                         addTokenId(it.first.txhash, creationtx.vout.back().scriptPubKey);    
                 }
             }
@@ -932,8 +935,12 @@ UniValue TokenV2List(const UniValue &params)
             SetCCunspentsCCIndex(unspentOutputs, cp->unspendableCCaddr, zeroid);    // find by burnable validated cc addr marker
             LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << " cp->unspendableCCaddr=" << cp->unspendableCCaddr << " SetCCunspentsCCIndex unspentOutputs.size()=" << unspentOutputs.size() << std::endl);
             for (const auto &it : unspentOutputs) {
-                LOCK(cs_main);
-                if (IsTxidInActiveChain(it.first.creationid))
+                bool isTxidInActiveChain = false;
+                {
+                    LOCK(cs_main);
+                    isTxidInActiveChain = IsTxidInActiveChain(it.first.creationid);
+                }
+                if (isTxidInActiveChain)
                     addTokenId(it.first.creationid, it.second.opreturn);
             }
         }
@@ -948,8 +955,12 @@ UniValue TokenV2List(const UniValue &params)
                 uint256 hashBlock;
                 if (myGetTransaction(it.first.txhash, creationtx, hashBlock) && creationtx.vout.size() > 0)
                 {
-                    LOCK(cs_main);
-                    if (IsBlockHashInActiveChain(hashBlock))
+                    bool isBlockHashInActiveChain = false;
+                    {
+                        LOCK(cs_main);
+                        isBlockHashInActiveChain = IsBlockHashInActiveChain(hashBlock);
+                    }
+                    if (isBlockHashInActiveChain)
                         addTokenId(it.first.txhash, creationtx.vout.back().scriptPubKey);    
                 }
             }
