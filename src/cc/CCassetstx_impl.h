@@ -72,7 +72,7 @@ UniValue AssetOrders(uint256 refassetid, const CPubKey &mypk, const UniValue &pa
         {
             LOGSTREAM(ccassets_log, CCLOG_DEBUG2, stream << funcname << " checking ordertx.vout.size()=" << ordertx.vout.size() << " funcid=" << (char)(funcid ? funcid : ' ') << " assetid=" << assetid.GetHex() << std::endl);
 
-            if ((!checkPK.IsValid() || checkPK == pubkey2pk(origpubkey)) && (refassetid.IsNull() || assetid == refassetid)) 
+            if ((!checkPK.IsValid() || checkPK == pubkey2pk(vorigpubkey)) && (refassetid.IsNull() || assetid == refassetid)) 
             {
                 uint256 spenttxid;
                 uint256 init_txid = ordertxid;
