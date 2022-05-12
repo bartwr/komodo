@@ -567,7 +567,8 @@ static UniValue tokentransfer(const std::string& name, const UniValue& params, b
     CAmount amount = atoll(params[2].get_str().c_str()); 
     if( amount <= 0 )    
         return MakeResultError("amount must be positive");
-    hex = TokenTransferDest<V>(0, tokenid, 1, dests, amount);
+    const bool spendMarker = false;
+    hex = TokenTransferDest<V>(0, tokenid, 1, dests, amount, spendMarker);
     RETURN_IF_ERROR(CCerror);
     if (!hex.empty())
         return MakeResultSuccess(hex);
@@ -1198,6 +1199,66 @@ UniValue tokenv2addccinputs(const UniValue& params, bool fHelp, const CPubKey& r
     return result;
 }
 
+template <class V>
+static UniValue tokenburn(const std::string& name, const UniValue& params, bool fHelp, const CPubKey& remotepk)
+{
+    UniValue result(UniValue::VOBJ); 
+    std::string hex; 
+    
+    CCerror.clear();
+
+    if (fHelp || params.size() != 3)
+        throw runtime_error(
+            name + " tokenid amount remove\n" 
+            "to burn token amount by sending to a burn pubkey:\n"
+            "   tokenid - token creation id\n"
+            "   amount - token amount to burn, in satoshi\n"
+            "   remove - remove from tokenlist by burning the marker utxo (true|false)\n\n");
+
+    if (ensure_CCrequirements(V::EvalCode()) < 0)
+        throw runtime_error(CC_REQUIREMENTS_MSG);
+    
+    if (!remotepk.IsValid() && !EnsureWalletIsAvailable(false))
+        throw runtime_error("wallet is required");    
+    LOCK2(cs_main, pwalletMain->cs_wallet);   // remote call not supported, only local wallet
+  
+    uint256 tokenid = Parseuint256(params[0].get_str().c_str());
+    if( tokenid.IsNull() )    
+        return MakeResultError("invalid tokenid");
+    
+    std::vector<CTxDestination> dests;
+
+    CPubKey dest;
+    vuint8_t vpubkey(ParseHex(CC_BURNPUBKEY_FIXED));
+    if (!CPubKey(vpubkey).IsFullyValid()) 
+        return MakeResultError("invalid burn pubkey");
+    
+    dest = CPubKey(vpubkey);    
+    dests.push_back(dest); 
+
+    CAmount amount = atoll(params[1].get_str().c_str()); 
+    if( amount <= 0 )    
+        return MakeResultError("amount must be positive");
+    std::string strSpend = params[2].get_str();
+    std::transform(strSpend.begin(), strSpend.end(), strSpend.begin(), ::tolower);
+    const bool spendMarker = strSpend == "true" ? true : false;
+    hex = TokenTransferDest<V>(0, tokenid, 1, dests, amount, spendMarker);
+    RETURN_IF_ERROR(CCerror);
+    if (!hex.empty())
+        return MakeResultSuccess(hex);
+    else
+        return MakeResultError("could not create burn token transaction");
+}
+
+UniValue tokenburn(const UniValue& params, bool fHelp, const CPubKey& remotepk)
+{
+    return tokenburn<TokensV1>(__func__, params, fHelp, remotepk);
+}
+UniValue tokenv2burn(const UniValue& params, bool fHelp, const CPubKey& remotepk)
+{
+    return tokenburn<TokensV2>(__func__, params, fHelp, remotepk);
+}
+
 
 // cc tx creation helper rpc (test)
 UniValue CreateCCEvalTx(const CPubKey &mypk, CAmount txfee, const UniValue &txjson)
@@ -1390,6 +1451,8 @@ static const CRPCCommand commands[] =
     { "tokens v2",       "tokenv2createtokel",    &tokenv2createtokel,       true },
     { "tokens",       "tokeninfotokel",        &tokeninfotokel,         true },
     { "tokens v2",       "tokenv2infotokel",      &tokenv2infotokel,         true },
+    { "tokens",       "tokenburn",        &tokenburn,         true },
+    { "tokens v2",       "tokenv2burn",      &tokenv2burn,         true },
     { "nspv",       "tokenv2addccinputs",      &tokenv2addccinputs,         true },
     { "nspv",       "createccevaltx",      &createccevaltx,         true },
 

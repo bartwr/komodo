@@ -297,7 +297,7 @@ UniValue TokenFinalizeTransferTx(CMutableTransaction &mtx, struct CCcontract_inf
 // total - token amount to transfer
 // returns: signed transfer tx in hex
 template <class V>
-UniValue TokenTransferExtDest(const CPubKey &remotepk, CAmount txfee, uint256 tokenid, const std::vector<std::string> &tokenaddrs, std::vector<std::pair<CCwrapper, uint8_t*>> probeconds, uint8_t M, std::vector<CTxDestination> destinations, CAmount total, bool useMempool)
+UniValue TokenTransferExtDest(const CPubKey &remotepk, CAmount txfee, uint256 tokenid, const std::vector<std::string> &tokenaddrs, std::vector<std::pair<CCwrapper, uint8_t*>> probeconds, uint8_t M, std::vector<CTxDestination> destinations, CAmount total, bool useMempool, bool spendMarker)
 {
 	CMutableTransaction mtx = CreateNewContextualCMutableTransaction(Params().GetConsensus(), komodo_nextheight());
 
@@ -336,6 +336,10 @@ UniValue TokenTransferExtDest(const CPubKey &remotepk, CAmount txfee, uint256 to
                 CCinputs += CCinputsOne;
             if (CCinputs >= total)
                 break;
+        }
+
+        if (spendMarker)  {
+            mtx.vin.push_back(CTxIn(tokenid, 0));  // spend tokenlist marker
         }
 
 		if (CCinputs >= total)  
@@ -437,14 +441,15 @@ template <class V>
 UniValue TokenTransferExt(const CPubKey &remotepk, CAmount txfee, uint256 tokenid, const std::vector<std::string> &tokenaddrs, std::vector<std::pair<CCwrapper, uint8_t*>> probeconds, uint8_t M, const std::vector<CPubKey> &destpks, CAmount total, bool useMempool)
 {
     std::vector<CTxDestination> destinations;
+    const bool spendMarker = false;
     for (auto const &pk : destpks)
         destinations.push_back(pk);
-    return TokenTransferExtDest<V>(remotepk, txfee, tokenid, tokenaddrs, probeconds,  M, destinations, total, useMempool);    
+    return TokenTransferExtDest<V>(remotepk, txfee, tokenid, tokenaddrs, probeconds,  M, destinations, total, useMempool, spendMarker);    
 }
 
 // transfer tokens from mypk to a destination
 template<class V>
-std::string TokenTransferDest(CAmount txfee, uint256 tokenid, uint8_t M, const std::vector<CTxDestination> &destinations, CAmount total)
+std::string TokenTransferDest(CAmount txfee, uint256 tokenid, uint8_t M, const std::vector<CTxDestination> &destinations, CAmount total, bool spendMarker)
 {
     CPubKey mypk = pubkey2pk(Mypubkey());
 
@@ -457,7 +462,7 @@ std::string TokenTransferDest(CAmount txfee, uint256 tokenid, uint8_t M, const s
     //vuint8_t vextraData = std::get<4>(tokenData);
 
     std::vector<std::string> tokenindexkeys = V::GetTokenIndexKeys(mypk);
-    UniValue sigData = TokenTransferExtDest<V>(CPubKey(), txfee, tokenid, tokenindexkeys, {}, M, destinations, total, false);
+    UniValue sigData = TokenTransferExtDest<V>(CPubKey(), txfee, tokenid, tokenindexkeys, {}, M, destinations, total, false, spendMarker);
     return ResultGetTx(sigData);
 }
 
@@ -466,9 +471,10 @@ template<class V>
 std::string TokenTransfer(CAmount txfee, uint256 tokenid, uint8_t M, const std::vector<CPubKey> &destpks, CAmount total)
 {
     std::vector<CTxDestination> destinations;
+    const bool spendMarker = false;
     for (auto const &pk : destpks)
         destinations.push_back(pk);
-    return TokenTransferDest<V>(txfee, tokenid, M, destinations, total);
+    return TokenTransferDest<V>(txfee, tokenid, M, destinations, total, spendMarker);
 }
 
 
@@ -910,6 +916,8 @@ static CAmount HasBurnedTokensvouts(Eval *eval, const CTransaction& tx, uint256 
     uint8_t evalCode = V::EvalCode();     // if both payloads are empty maybe it is a transfer to non-payload-one-eval-token vout like GatewaysClaim
     uint8_t evalCode2 = 0;              // will be checked if zero or not
 
+    const bool isSubver1 = CCUpgrades::IsUpgradeActive(eval->GetCurrentHeight(), CCUpgrades::GetUpgrades(), CCUpgrades::CCUPGID_MIXEDMODE_SUBVER_1);
+
     // test vouts for possible token use-cases:
     std::vector<std::pair<CTxOut, std::string>> testVouts;
 
@@ -970,7 +978,9 @@ static CAmount HasBurnedTokensvouts(Eval *eval, const CTransaction& tx, uint256 
 
             // try all test vouts:
             for (const auto &t : testVouts) {
-                if (t.first == tx.vout[i]) {
+                //if (t.first == tx.vout[i]) {
+                if (!isSubver1 && t.first == tx.vout[i] ||
+                    isSubver1 && IsEqualDestinations(t.first.scriptPubKey, tx.vout[i].scriptPubKey))  {
                     LOGSTREAMFN(cctokens_log, CCLOG_DEBUG1, stream << "burned amount=" << tx.vout[i].nValue << " msg=" << t.second << " evalCode=" << (int)evalCode << " evalCode2=" << (int)evalCode2 << " txid=" << tx.GetHash().GetHex() << " tokenid=" << reftokenid.GetHex() << std::endl);
                     burnedAmount += tx.vout[i].nValue;
                     break; // do not calc vout twice!
