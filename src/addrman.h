@@ -263,6 +263,8 @@ protected:
     int Check_();
 #endif
 
+    void GetAddrLimited(std::vector<CAddress> &vAddr, unsigned int nNodes);
+
     //! Select several addresses at once.
     void GetAddr_(std::vector<CAddress> &vAddr);
 

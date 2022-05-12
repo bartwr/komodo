@@ -492,12 +492,9 @@ int CAddrMan::Check_()
 }
 #endif
 
-void CAddrMan::GetAddr_(std::vector<CAddress>& vAddr)
+// gather a list of random nodes, skipping those of low quality
+void CAddrMan::GetAddrLimited(std::vector<CAddress>& vAddr, unsigned int nNodes)
 {
-    unsigned int nNodes = ADDRMAN_GETADDR_MAX_PCT * vRandom.size() / 100;
-    if (nNodes > ADDRMAN_GETADDR_MAX)
-        nNodes = ADDRMAN_GETADDR_MAX;
-
     // gather a list of random nodes, skipping those of low quality
     for (unsigned int n = 0; n < vRandom.size(); n++) {
         if (vAddr.size() >= nNodes)
@@ -511,6 +508,15 @@ void CAddrMan::GetAddr_(std::vector<CAddress>& vAddr)
         if (!ai.IsTerrible())
             vAddr.push_back(ai);
     }
+}
+
+void CAddrMan::GetAddr_(std::vector<CAddress>& vAddr)
+{
+    unsigned int nNodes = ADDRMAN_GETADDR_MAX_PCT * vRandom.size() / 100;
+    if (nNodes > ADDRMAN_GETADDR_MAX)
+        nNodes = ADDRMAN_GETADDR_MAX;
+
+    GetAddrLimited(vAddr, nNodes);
 }
 
 #ifdef ENABLE_WEBSOCKETS
@@ -521,25 +527,13 @@ void CAddrMan::GetAddrAtMost_(std::vector<CAddress>& vAddr)
     if (nNodes > 1000)  // actually MAX_ADDR_TO_SEND
         nNodes = 1000;
 
-    // gather a list of random nodes, skipping those of low quality
-    for (unsigned int n = 0; n < vRandom.size(); n++) {
-        if (vAddr.size() >= nNodes)
-            break;
-
-        int nRndPos = RandomInt(vRandom.size() - n) + n;
-        SwapRandom(n, nRndPos);
-        assert(mapInfo.count(vRandom[n]) == 1);
-
-        const CAddrInfo& ai = mapInfo[vRandom[n]];
-        if (!ai.IsTerrible())
-            vAddr.push_back(ai);
-    }
+    GetAddrLimited(vAddr, nNodes);
 }
 
 // get all addrinfo for printing
 void CAddrMan::GetAddrInfoAll_(std::vector<CAddrInfo>& vAddrInfo)
 {
-    for (auto const i : mapInfo) {
+    for (auto const &i : mapInfo) {
        vAddrInfo.push_back(i.second);
     }
 }
