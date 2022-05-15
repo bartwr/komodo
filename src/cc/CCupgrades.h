@@ -34,7 +34,7 @@ namespace CCUpgrades  {
     const int32_t CCMIXEDMODE_SUBVER_1_DIMXY24_HEIGHT = 100000000;  // TBD
     const int32_t CCMIXEDMODE_SUBVER_1_DIMXY28_HEIGHT = 100000000;  // TBD
     const int32_t CCMIXEDMODE_SUBVER_1_DIMXY32_HEIGHT = 100000000;  // TBD
-    const int32_t CCMIXEDMODE_SUBVER_1_TKLTEST2_HEIGHT = 87400;  // approx 15 May 2022 11:00a.m. UTC
+    const int32_t CCMIXEDMODE_SUBVER_1_TKLTEST2_HEIGHT = 89940;  // approx 17 May 2022 10:00a.m. UTC
     // latest protocol version:
     const int     CCMIXEDMODE_SUBVER_1_PROTOCOL_VERSION = 170010; 
     // pre-upgrade protocol version:
