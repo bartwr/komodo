@@ -20,6 +20,8 @@
 #include "CCinclude.h"
 #include "komodo_structs.h"
 
+bool fDisableCCLogForTests = false;
+
 // get address for a scriptPubKey
 bool Getscriptaddress(char *destaddr,const CScript &scriptPubKey)
 {
@@ -132,6 +134,7 @@ CPubKey pubkey2pk(std::vector<uint8_t> vpubkey)
 // like -debug=cctokens (CCLOG_INFO) or -debug=cctokens-2 (CCLOG_DEBUG2 and lower levels)
 static bool cc_log_accept_category(const char *category, int level)
 {
+    if (fDisableCCLogForTests) return false;
     if (level < 0)
         return true;  // always print errors
 
