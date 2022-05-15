@@ -548,10 +548,7 @@ bool CheckMigration(Eval *eval, const CTransaction &importTx, const CTransaction
         if (!hasTokenVin)
             return eval->Invalid("burn-tx-has-no-token-vins");
 
-        std::vector<CPubKey> vDeadPubkeys;
-        vDeadPubkeys.push_back(pubkey2pk(ParseHex(CC_BURNPUBKEY)));
-        if (CCUpgrades::IsUpgradeActive(eval->GetCurrentHeight(), CCUpgrades::GetUpgrades(), CCUpgrades::CCUPGID_MIXEDMODE_SUBVER_1))
-            vDeadPubkeys.push_back(pubkey2pk(ParseHex(CC_BURNPUBKEY_FIXED)));  // activate new burn pubkey
+        std::vector<CPubKey> vDeadPubkeys = GetBurnPubKeys(eval->GetCurrentHeight());
 
         // calc outputs for burn tx
         CAmount ccBurnOutputs = 0;

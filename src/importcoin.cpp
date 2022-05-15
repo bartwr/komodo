@@ -345,10 +345,9 @@ CAmount GetCoinImportValue(const CTransaction &tx, int32_t nHeight)
                 if (!vnonfungibleOpret.empty())
                     nonfungibleEvalCode = vnonfungibleOpret.begin()[0];
 
-                std::vector<CPubKey> vDeadPubkeys;
-                vDeadPubkeys.push_back(pubkey2pk(ParseHex(CC_BURNPUBKEY)));
-                if (CCUpgrades::IsUpgradeActive(nHeight, CCUpgrades::GetUpgrades(), CCUpgrades::CCUPGID_MIXEDMODE_SUBVER_1))
-                    vDeadPubkeys.push_back(pubkey2pk(ParseHex(CC_BURNPUBKEY_FIXED)));  // activate new burn pubkey
+
+                std::vector<CPubKey> vDeadPubkeys = GetBurnPubKeys(nHeight);
+
 
                 // calc outputs for burn tx
                 int64_t ccBurnOutputs = 0;

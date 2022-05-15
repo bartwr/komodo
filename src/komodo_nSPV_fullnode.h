@@ -986,7 +986,6 @@ void komodo_nSPVreq(CNode* pfrom, std::vector<uint8_t> request) // received a re
         return;
     }
 
-    requestType = request[0];
     memcpy(&requestId, &request[1], sizeof(requestId));
     uint8_t *requestData = &request[nspvHeaderSize];
     int32_t requestDataLen = request.size() - nspvHeaderSize;

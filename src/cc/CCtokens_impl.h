@@ -375,9 +375,7 @@ UniValue TokenTransferExtDest(const CPubKey &remotepk, CAmount txfee, uint256 to
                 // probes for spending from mypk
                 for (const auto &mycond : GetTokenV2Conds(mypk))
                     CCAddVintxCond(cp, mycond, nullptr);
-            }
-            
-            if (V::EvalCode() == EVAL_TOKENSV2) {
+
                 // if this is multisig - build and add multisig probes:
                 // find any token vin, load vin tx and extract M and pubkeys
                 for(int ccvin = 0; ccvin < mtx.vin.size(); ccvin ++) { 
@@ -908,7 +906,7 @@ static CAmount HasBurnedTokensvouts(Eval *eval, const CTransaction& tx, uint256 
 {
     uint8_t dummyEvalCode;
     uint256 tokenIdOpret;
-    std::vector<CPubKey> vDeadPubkeys, voutPubkeysDummy;
+    std::vector<CPubKey> voutPubkeysDummy;
     std::vector<vscript_t>  oprets;
     TokenDataTuple tokenData;
     vscript_t vopretExtra, vextraData;
@@ -952,10 +950,7 @@ static CAmount HasBurnedTokensvouts(Eval *eval, const CTransaction& tx, uint256 
         evalCode2 = 0;
     }
 
-    vDeadPubkeys.push_back(pubkey2pk(ParseHex(CC_BURNPUBKEY)));
-    if (CCUpgrades::IsUpgradeActive(eval->GetCurrentHeight(), CCUpgrades::GetUpgrades(), CCUpgrades::CCUPGID_MIXEDMODE_SUBVER_1))
-        vDeadPubkeys.push_back(pubkey2pk(ParseHex(CC_BURNPUBKEY_FIXED)));  // activate new burn pubkey
-
+    std::vector<CPubKey> vDeadPubkeys = GetBurnPubKeys(eval->GetCurrentHeight());
 
     CAmount burnedAmount = 0;
 

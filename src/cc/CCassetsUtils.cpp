@@ -504,6 +504,7 @@ CAmount AssetsGetTxTokenInputs(Eval *eval, struct CCcontract_info *cpTokens, con
 
 // check if either royalty or paid_value is dust in fill ask
 // nOutputValue is the total amount of paid_value + royalty
+// it is expected that 0 < royaltyFract < TKLROYALTY_DIVISOR (calling validation code should provide that)
 bool AssetsFillOrderIsDust(int32_t royaltyFract, CAmount nOutputValue, bool &isRoyaltyDust)
 {
     // nOutputValue is sum of paid_value + royalty_value
