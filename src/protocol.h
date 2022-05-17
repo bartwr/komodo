@@ -85,15 +85,15 @@ enum : uint64_t {
     // NODE_NETWORK means that the node is capable of serving the block chain. It is currently
     // set by all Bitcoin Core nodes, and is unset by SPV clients or other peers that just want
     // network services but don't provide them.
-    NODE_NETWORK = (1UL << 0),
+    NODE_NETWORK = (1ULL << 0),
     // NODE_BLOOM means the node is capable and willing to handle bloom-filtered connections.
     // Zcash nodes used to support this by default, without advertising this bit,
     // but no longer do as of protocol version 170004 (= NO_BLOOM_VERSION)
-    NODE_BLOOM = (1UL << 2),
+    NODE_BLOOM = (1ULL << 2),
 
-    NODE_NSPV = (1UL << 30),
-    NODE_ADDRINDEX = (1UL << 29),
-    NODE_SPENTINDEX = (1UL << 28),
+    NODE_NSPV = (1ULL << 30),
+    NODE_ADDRINDEX = (1ULL << 29),
+    NODE_SPENTINDEX = (1ULL << 28),
 
     // Bits 24-31 are reserved for temporary experiments. Just pick a bit that
     // isn't getting used, or one not being used much, and notify the
@@ -103,8 +103,8 @@ enum : uint64_t {
     // do not actually support. Other service bits should be allocated via the
     // BIP process.
 
-    NODE_WEBSOCKETS = (1UL << 31),  // nspv listening on websockets
-    NODE_WEBSOCKETS_TLS = (1UL << 32)  // websockets tls
+    NODE_WEBSOCKETS = (1ULL << 31),  // nspv listening on websockets
+    NODE_WEBSOCKETS_TLS = (1ULL << 32)  // websockets tls
 };
 
 /** A CService with information about it as peer */
