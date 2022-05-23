@@ -701,7 +701,7 @@ CBlockTemplate* CreateNewBlock(CPubKey _pk,const CScript& _scriptPubKeyIn, int32
         txNew.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(1)) + COINBASE_FLAGS;
         txNew.vout.resize(1);
         txNew.vout[0].scriptPubKey = scriptPubKeyIn;
-        txNew.vout[0].nValue = 1000000*COIN + nFees;
+        txNew.vout[0].nValue = GetBlockSubsidy(nHeight,consensusParams) + nFees;
         txNew.nExpiryHeight = 0;
         //LogPrintf( "coinbase txid.%s\n", txNew.GetHash().ToString().c_str());
         //LogPrintf( "MINER: coinbasetx.%s\n", EncodeHexTx(txNew).c_str());
