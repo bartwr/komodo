@@ -54,8 +54,8 @@ const int32_t nS4HardforkHeight = 1922000;   //dPoW Season 4 2020 hardfork Sunda
 const uint32_t nS5Timestamp = 1623682800;  //dPoW Season 5 Monday, June 14th, 2021 (03:00:00 PM UTC)
 const int32_t nS5HardforkHeight = 2437300;  //dPoW Season 5 Monday, June 14th, 2021
 
-const uint32_t nS6TestTimestamp = 1653266723;  //  Should not matter for our current testnet, only affects ACs
-const int32_t nS6TestHardforkHeight = 2918261;  // May 22, 2022 8:42:03 PM An arbitrary time that has already passed
+const uint32_t nS6TestTimestamp = 1653272520;  //  Should not matter for our current testnet, only affects ACs
+const int32_t nS6TestHardforkHeight = 2918314;  // May 22, 2022 8:42:03 PM An arbitrary time that has already passed
 
 #define _COINBASE_MATURITY 100
 int COINBASE_MATURITY = _COINBASE_MATURITY;//100;
