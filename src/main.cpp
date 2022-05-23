@@ -3773,16 +3773,19 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         return state.DoS(100, error("ConnectBlock(): coinbase for block 1 pays wrong amount (actual=%d vs correct=%d)", block.vtx[0].GetValueOut(), blockReward),
                             REJECT_INVALID, "bad-cb-amount");
     }
+    bool EXTREMELY_DANGEROUS_NOT_FOR_PROD_BRANCHES = true; // disable mining subsidy checks on HFNET
     if ( block.vtx[0].GetValueOut() > blockReward+KOMODO_EXTRASATOSHI )
     {
         if ( ASSETCHAINS_SYMBOL[0] != 0 || pindex->nHeight >= KOMODO_NOTARIES_HEIGHT1 || block.vtx[0].vout[0].nValue > blockReward )
         {
             //LogPrintf( "coinbase pays too much\n");
             //sleepflag = true;
-            return state.DoS(100,
-                             error("ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)",
-                                   block.vtx[0].GetValueOut(), blockReward),
-                             REJECT_INVALID, "bad-cb-amount");
+            if ( !EXTREMELY_DANGEROUS_NOT_FOR_PROD_BRANCHES ){
+                return state.DoS(100,
+                                 error("ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)",
+                                       block.vtx[0].GetValueOut(), blockReward),
+                                 REJECT_INVALID, "bad-cb-amount")
+            }
         } else if ( IS_KOMODO_NOTARY )
             LogPrintf("allow nHeight.%d coinbase %.8f vs %.8f interest %.8f\n",(int32_t)pindex->nHeight,dstr(block.vtx[0].GetValueOut()),dstr(blockReward),dstr(sum));
     }
