@@ -3784,7 +3784,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 return state.DoS(100,
                                  error("ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)",
                                        block.vtx[0].GetValueOut(), blockReward),
-                                 REJECT_INVALID, "bad-cb-amount")
+                                 REJECT_INVALID, "bad-cb-amount");
             }
         } else if ( IS_KOMODO_NOTARY )
             LogPrintf("allow nHeight.%d coinbase %.8f vs %.8f interest %.8f\n",(int32_t)pindex->nHeight,dstr(block.vtx[0].GetValueOut()),dstr(blockReward),dstr(sum));
