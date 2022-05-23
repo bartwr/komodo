@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-#define NUM_KMD_SEASONS 6
+#define NUM_KMD_SEASONS 7
 #define NUM_KMD_NOTARIES 64
 
 extern const uint32_t nStakedDecemberHardforkTimestamp; //December 2019 hardfork
@@ -13,8 +13,14 @@ extern const int32_t nS4HardforkHeight;   //dPoW Season 4 2020 hardfork
 extern const uint32_t nS5Timestamp; //dPoW Season 5 June 14th, 2021 hardfork (03:00:00 PM UTC) (defined in komodo_globals.h)
 extern const int32_t nS5HardforkHeight;   //dPoW Season 5 June 14th, 2021 hardfork estimated block height (defined in komodo_globals.h)
 
-static const uint32_t KMD_SEASON_TIMESTAMPS[NUM_KMD_SEASONS] = {1525132800, 1563148800, nStakedDecemberHardforkTimestamp, nS4Timestamp, nS5Timestamp, 1751328000};
-static const int32_t KMD_SEASON_HEIGHTS[NUM_KMD_SEASONS] = {814000, 1444000, nDecemberHardforkHeight, nS4HardforkHeight, nS5HardforkHeight, 7113400};
+extern const uint32_t nS5Timestamp; //dPoW Season 5 June 14th, 2021 hardfork (03:00:00 PM UTC) (defined in komodo_globals.h)
+extern const int32_t nS5HardforkHeight;   //dPoW Season 5 June 14th, 2021 hardfork estimated block height (defined in komodo_globals.h)
+
+extern const uint32_t nS6TestTimestamp; //dPoW Season 5 June 14th, 2021 hardfork (03:00:00 PM UTC) (defined in komodo_globals.h)
+extern const int32_t nS6TestHardforkHeight;   //dPoW Season 5 June 14th, 2021 hardfork estimated block height (defined in komodo_globals.h)
+
+static const uint32_t KMD_SEASON_TIMESTAMPS[NUM_KMD_SEASONS] = {1525132800, 1563148800, nStakedDecemberHardforkTimestamp, nS4Timestamp, nS5Timestamp, nS6TestTimestamp, 1751328000};
+static const int32_t KMD_SEASON_HEIGHTS[NUM_KMD_SEASONS] = {814000, 1444000, nDecemberHardforkHeight, nS4HardforkHeight, nS5HardforkHeight, nS6TestHardforkHeight, 7113400};
 
 // Era array of pubkeys. Add extra seasons to bottom as requried, after adding appropriate info above. 
 static const char *notaries_elected[NUM_KMD_SEASONS][NUM_KMD_NOTARIES][2] =
@@ -417,7 +423,73 @@ static const char *notaries_elected[NUM_KMD_SEASONS][NUM_KMD_NOTARIES][2] =
         {"strob_SH", "025ceac4256cef83ca4b110f837a71d70a5a977ecfdf807335e00bc78b560d451a"},
         {"strobnidan_SH", "02b967fde3686d45056343e488997d4c53f25cd7ad38548cd12b136010a09295ae"},
         {"dragonhound_DEV", "038e010c33c56b61389409eea5597fe17967398731e23185c84c472a16fc5d34ab"}
-   }
+   },
+   {
+        {"pubkey_0", "027bedcc5fe3660a949fea37244e9f1c22a3b65604dfd242aa1e10bbcb0c6c6d93"},
+        {"pubkey_1", "03d76c3eadb9cd7f2d5c7f35ee21c4ce663f310fa33ef3969d10bae9feea27ae84"},
+        {"pubkey_2", "03cf2fdfff08e02b4cf82da448a2dcc8319d08e537a02ec6382ada9b905ed3dcb2"},
+        {"pubkey_3", "02b37b2e323c77ea3ed8e502aa56b1c572143204b8e45555e58ae1dff685d459a7"},
+        {"pubkey_4", "03d32ac5339242c1dacda0bfd48b7e43e91eedff3173a668d41b3de1f4d3fbdb59"},
+        {"pubkey_5", "0326d19a47602fdf5a6947e68a901090dfdaf8801875e5deba782f5772e024bbf6"},
+        {"pubkey_6", "0211e94e272b6613bc486c1568cde9aa237a3f40aa965b104749551ad22926bf4a"},
+        {"pubkey_7", "031026a6de5ce72e8268164dc8bb400875b877416f0cc7e64c6d7b12cf942f82b6"},
+        {"pubkey_8", "03e76abfa829f32f7d26f4a1c977f2e3e8fbbd9c509e5a578eebe5900e8c6a0c56"},
+        {"pubkey_9", "0313e8852e94fa85de91d01633d8b4f70c6d740f84991c852c58fa1c1b305b0639"},
+        {"pubkey_10", "038b05a23a84af966e0b3597ef5c80a163b55e6fdcb2bc9cee5212591812ab53a1"},
+        {"pubkey_11", "03d5dd82ed547cc97bc19544d1fa5d9284a0823e457eb05cdf3d1fa9457c279d7b"},
+        {"pubkey_12", "03021acfdd7976b9f2ade76bc067434cd8b799612d72e170e9e4b241ddebab804f"},
+        {"pubkey_13", "02c20114df11a0bc34caa52dd4a2558e580a6979d5ede2f42307e6cdcf34d16050"},
+        {"pubkey_14", "02839da7abf76360a779ff613196d325b6421f22de5ba18f080cf9b7b4d0f9ad6b"},
+        {"pubkey_15", "03e7827273717a68530d52ee34a97202aa09dfe62f738692560a212a3cede66d90"},
+        {"pubkey_16", "02302a06bbcaea937e730639b0f45542384625e92d4ec414ec0c67f5b850ab45aa"},
+        {"pubkey_17", "0232737964a86c230225a3922dadf6c66615156d1fc4fc9e1e374ebd62d84c7618"},
+        {"pubkey_18", "0234171a273b20018e317a3f89caa5041762e3735ad78336fb2bb966e89582e80a"},
+        {"pubkey_19", "0338c48a3d910095ae7da650014643dd5dc786e9a60752d4ed45584cca4eb66d68"},
+        {"pubkey_20", "02c4194232b6b78309b3ddc0e4fa11350abc2994453722667a1339cb67a2edc49c"},
+        {"pubkey_21", "032c47d259c9fc876ef650d375fce2dac0508b389efd98153d7bac1a0e7a896e11"},
+        {"pubkey_22", "02641a3ec0a41fa6f4b79826396bacf0df6bd98f10728aa7f5531ae6dcfea3c18f"},
+        {"pubkey_23", "021af9e3ad1d4509eff3329f958899eddc601aaa6edc6d8c4f85978bbadbd6cf4c"},
+        {"pubkey_24", "02728d142bc43e95b7fd30b94e238337d9a4c2a50bf2b13d2af2bdacd64fed7e11"},
+        {"pubkey_25", "039229546200dc28c025584752927f2d6a924e6cea99d1cddc23dd323531d4eaad"},
+        {"pubkey_26", "028e0ae38b0016dae281e7eea98350ff9ce1508e09d559f22a8ebdcfe014519cb0"},
+        {"pubkey_27", "0213ca37d46f9824b8e25eb0fca07525ffaf9ccdc6f66c28f7b77445a1526645c8"},
+        {"pubkey_28", "02f9b7fc26ab57f4b04aa91fbed7e872af12be9e5e6177d6421f05038219efba41"},
+        {"pubkey_29", "029be63fbf87ffea0231bf6c5d82956dcb97d647580c22fa6f8030d12324580b3a"},
+        {"pubkey_30", "03be6278e90f8af84ceac3123cc6437cee49829206fb14e2a6c244a375797ce610"},
+        {"pubkey_31", "0286fb62ecb9b3db3df2fa1a8f01982d9d4ae81c7195fcee0174daba4fcac67b91"},
+        {"pubkey_32", "02b1793504300b389628182fb74bb7a74e08d3f8bb107a3b834cb0eb46a6039594"},
+        {"pubkey_33", "02bc0622ce88dd5dfb824703635200dc1273b645c74e987f7ec664fa17d5cf48d8"},
+        {"pubkey_34", "02ea0c6b8d73a0abe9453c2459d4cb496f9576f2cf0bb6d8ccf4e25d59ca9b42c3"},
+        {"pubkey_35", "029f72bb141978f2232475e81431c15fa0f6d440241729ac49801724c582c2c02b"},
+        {"pubkey_36", "037b5775d999b87c36846439f8d634d2518c739dc2508af2109deb5b647d02a90a"},
+        {"pubkey_37", "02bc0c976c1ae0634085281146db0ae7aa4d9744c72707ce050ce031c1282f8b9a"},
+        {"pubkey_38", "02cb0f5b65a8f44612c094c15ac78a1ecd4b0ad6b254d4af62cfffdc853393916c"},
+        {"pubkey_39", "024e5bae429bba3879bb90e38be3dbfc6f198a02e2ddf0cd895a5a71e4f247a1b2"},
+        {"pubkey_40", "02fd6be08c6ac54f793408169e6897134eac6f1a627805b982cb3098088433ae67"},
+        {"pubkey_41", "03e9d7b6eff5b8e9dc275196440e76dfeca1b1b88d8538cedb9dd7374a80127f3f"},
+        {"pubkey_42", "0342e84238997c124bcc961bf3f42bf34c8cf789579778b448363ee186d72fef29"},
+        {"pubkey_43", "024c0159a4af4935acce5bfab994d7bcb2e76e6c0009df476fb41b1ac6fd973e67"},
+        {"pubkey_44", "03b03417775f5b0a65c6ee5b6e5f61d588c0de739bcde83bc9af4d8bd255fa7a47"},
+        {"pubkey_45", "0229be911ee0c86688db0cb1de8b8ef9be7185ed36b8e20a1357f186d69fcdb289"},
+        {"pubkey_46", "03774c9f578f8b590edc3cefa8e54556d31a8987b2f7273bbfaf9bf947f1ee3121"},
+        {"pubkey_47", "0361affbe7ac228e4c755dfd082211628ec2c6847e23380482ff52bb1030343659"},
+        {"pubkey_48", "02fa384ae4d6df27a7ae697ec7ba4415e0105a52f44543840ea121d3c1f3004a58"},
+        {"pubkey_49", "0305eecb403532939aa56c87ade9df3028f4e04611ff9a845c3c367835011782ea"},
+        {"pubkey_50", "0365c1a9685e9cd3bc25dac4faa9ce09aae57d86fb69fb6de604fe3a64da0519d9"},
+        {"pubkey_51", "03504c1e5f29da674a6edafed91da0e8c1188b9de9089ade3d63460839b3f0a8fa"},
+        {"pubkey_52", "02e3f1a60fa31360b7f3319bf7c343aed3f0ab62a8fc39aba24d8646e9e6913986"},
+        {"pubkey_53", "026233842d7214881099cb4c3738997b84e07e9ae05b3e0a06102fb8290e0859e7"},
+        {"pubkey_54", "029f6c1e236b80285a6a636de1d674986f24b44e7c8c479b4cd99eb96defa5a47b"},
+        {"pubkey_55", "03a00bae53524a458176c7d5a8b1ca9f6006c38bfd907408ac0d995b0349e43396"},
+        {"pubkey_56", "0326cf4ea7cbe24dc3ceed942cdb0bfe640d8bb63c2260e6aea03c55322246baf3"},
+        {"pubkey_57", "02e43dc091ac764be4fd90f4186a016c309fcc65da5156ff95f95c5847a71e1500"},
+        {"pubkey_58", "0361d8efedc5e1c3022df729c96a54aee6ce02a52daa12525b6b69fa335a0a6b6e"},
+        {"pubkey_59", "020211567f3a1d7279f68c77c0f2f9e3c091e65baaf16d4544c78efad3639799b0"},
+        {"pubkey_60", "027b5c0dee746e45c6e4aded7636be717af82e9ff8b4be156218482acceca2a68f"},
+        {"pubkey_61", "039870a477d5f3742cc00624f50ad61ca21f857a28c171e11217c737dc3348f26a"},
+        {"pubkey_62", "03807fd35379e20e9143fb50460400cd1102573bcbef8b064ee751637313d9f5b9"},
+        {"pubkey_63", "0319564ed85a6de172369200b164279fd11bd59956a28137f31a990eb820711b28"},
+    },
 };
 
 extern char NOTARYADDRS[64][64];
