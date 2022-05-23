@@ -1,134 +1,67 @@
-# KomodoOcean (komodo-qt) #
+# HFNET testnet
 
-![Downloads](https://img.shields.io/github/downloads/DeckerSU/KomodoOcean/total)
+We are testing proposed changes to KMD consensus that will alleviate issues we are facing with unreasonably long gaps in block times.
 
-![](./doc/images/komodo-qt-promo-2020-01.jpg)
+Credit to @deckersu for all changes. 
 
-Komodo-Qt (KomodoOcean) is a world-first Qt native wallet for KMD ([Komodo](https://komodoplatform.com/)) and smartchains (assetchains). It's available for three OS platforms - Windows, Linux, MacOS.
+# How to Participate 
+create HFNET directory
+```
+mkdir ~/HFNET
+```
 
-Use the default `static` branch and following scripts to build:
+create `~/HFNET/komodo.conf` with the following contents:
+```
+rpcuser=some_username
+rpcpassword=some_secure_password
+rpcport=8882
+txindex=1
+server=1
+daemon=1
+rpcworkqueue=256
+rpcbind=127.0.0.1
+rpcallowip=127.0.0.1
+```
 
-- Linux: `build.sh` (native build)
-- Windows: `build-win.sh` (cross-compilation for Win)
-- MacOS: `build-mac-cross.sh` (cross-compilation for OSX)
-- MacOS: `build-mac.sh` (native build)
+download the boostrap and extract it to `~/HFNET`
+```
+cd ~/HFNET
+wget https://bootstrap.dexstats.info/HFNET-bootstrap.tar.gz
+tar -zxvf HFNET-bootstrap.tar.gz
+```
 
-Visit `#🤝│general-support` or `#wallet-ocean-qt` channel in [Komodo Discord](https://komodoplatform.com/discord) for more information.
 
-## How to build? ##
-
-#### Linux
-
-```shell
-#The following packages are needed:
+install dependencies
+```
 sudo apt-get install build-essential pkg-config libc6-dev m4 g++-multilib autoconf libtool ncurses-dev unzip git python bison zlib1g-dev wget libcurl4-gnutls-dev bsdmainutils automake curl
 ```
 
-```shell
-git clone https://github.com/DeckerSU/KomodoOcean --branch static --single-branch
-cd komodo
-./zcutil/fetch-params.sh
-# -j8 = using 8 threads for the compilation - replace 8 with number of threads you want to use
-./zcutil/build-linux.sh -j8
-#This can take some time.
+clone and compile komodod from my patch-hf22 branch
+```
+cd
+git clone https://github.com/alrighttt/komodo/tree/patch-hf22 alright-kmd
+cd alright-kmd
+./zcutil/build-no-qt.sh -j$(nproc)
 ```
 
-#### OSX (Cross-compile)
-
-Before start, read the following docs: [depends](https://github.com/bitcoin/bitcoin/blob/master/depends/README.md), [macdeploy](https://github.com/bitcoin/bitcoin/blob/master/contrib/macdeploy/README.md) .
-
-Install dependencies:
+start the daemon
 ```
-sudo apt-get install curl librsvg2-bin libtiff-tools bsdmainutils cmake imagemagick libcap-dev libz-dev libbz2-dev python3-setuptools libtinfo5 xorriso
+cd ~/alright-kmd/src
+./komodod -notary=dummy -pubkey=<I will provide you a pubkey; dm Alright#0419 or https://keybase.io/alrighttt/>  -whitelistaddress=<address for pubkey provided> -minrelaytxfee=0.000035 -opretmintxfee=0.004 -datadir=/home/user/HFNET -addnode=65.21.77.109 -addnode=95.217.198.157 -debug=hfnet &
 ```
 
-Place prepared SDK file `Xcode-12.1-12A7403-extracted-SDK-with-libcxx-headers.tar.gz` in repo root, use `build-mac-cross.sh` script to build.
-
-#### OSX (Native)
-Ensure you have [brew](https://brew.sh) and Command Line Tools installed.
-```shell
-# Install brew
-/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-# Install Xcode, opens a pop-up window to install CLT without installing the entire Xcode package
-xcode-select --install 
-# Update brew and install dependencies
-brew update
-brew upgrade
-brew tap discoteq/discoteq; brew install flock
-brew install autoconf autogen automake
-# brew install gcc@6
-brew install binutils
-brew install protobuf
-brew install coreutils
-brew install wget
-# Clone the Komodo repo
-git clone https://github.com/DeckerSU/KomodoOcean --branch static --single-branch
-# Change master branch to other branch you wish to compile
-cd komodo
-./zcutil/fetch-params.sh
-# -j8 = using 8 threads for the compilation - replace 8 with number of threads you want to use
-./zcutil/build-mac.sh -j8
-# This can take some time.
+import the key I provided
+```
+komodo-cli -datadir=/home/user/HFNET importprivkey <WIF I provide you> "" true 2918310
 ```
 
-#### Windows
-Use a debian cross-compilation setup with mingw for windows and run:
-```shell
-sudo apt-get install build-essential pkg-config libc6-dev m4 g++-multilib autoconf libtool ncurses-dev unzip git python python-zmq zlib1g-dev wget libcurl4-gnutls-dev bsdmainutils automake curl cmake mingw-w64
-curl https://sh.rustup.rs -sSf | sh
-source $HOME/.cargo/env
-rustup target add x86_64-pc-windows-gnu
 
-sudo update-alternatives --config x86_64-w64-mingw32-gcc
-# (configure to use POSIX variant)
-sudo update-alternatives --config x86_64-w64-mingw32-g++
-# (configure to use POSIX variant)
-
-git clone https://github.com/DeckerSU/KomodoOcean --branch static --single-branch
-cd komodo
-./zcutil/fetch-params.sh
-# -j8 = using 8 threads for the compilation - replace 8 with number of threads you want to use
-./zcutil/build-win.sh -j8
-#This can take some time.
+Begin mining 
 ```
-**komodo is experimental and a work-in-progress.** Use at your own risk.
-
-*p.s.* Currently only `x86_64` arch supported for MacOS, build for `Apple M1` processors unfortunately not yet supported.
-
-## Create komodo.conf ##
-
-Before start the wallet you should [create config file](https://github.com/DeckerSU/KomodoOcean/wiki/F.A.Q.#q-after-i-start-komodo-qt-i-receive-the-following-error-error-cannot-parse-configuration-file-missing-komodoconf-only-use-keyvalue-syntax-what-should-i-do) `komodo.conf` at one of the following locations:
-
-- Linux - `~/.komodo/komodo.conf`
-- Windows - `%APPDATA%\Komodo\komodo.conf`
-- MacOS - `~/Library/Application Support/Komodo/komodo.conf`
-
-With the following content:
-
-```
-txindex=1
-rpcuser=komodo
-rpcpassword=local321 # don't forget to change password
-rpcallowip=127.0.0.1
-rpcbind=127.0.0.1
-server=1
+komodo-cli -datadir=/home/user/HFNET setgenerate true 1
 ```
 
-Bash one-liner for Linux to create `komodo.conf` with random RPC password:
-
+open port 8880
 ```
-RANDPASS=$(tr -cd '[:alnum:]' < /dev/urandom | fold -w16 | head -n1) && \
-tee -a ~/.komodo/komodo.conf << END
-txindex=1
-rpcuser=komodo
-rpcpassword=${RANDPASS}
-rpcallowip=127.0.0.1
-rpcbind=127.0.0.1
-server=1
-END
+sudo ufw allow 8880 comment HFNET
 ```
-
-## Developers of Qt wallet ##
-
-- Main developer: **Ocean**
-- IT Expert / Sysengineer: **Decker**
