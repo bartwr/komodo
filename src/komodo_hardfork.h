@@ -428,7 +428,7 @@ static const char *notaries_elected[NUM_KMD_SEASONS][NUM_KMD_NOTARIES][2] =
         {"Alright_0", "027bedcc5fe3660a949fea37244e9f1c22a3b65604dfd242aa1e10bbcb0c6c6d93"},
         {"CHMEX_1", "03d76c3eadb9cd7f2d5c7f35ee21c4ce663f310fa33ef3969d10bae9feea27ae84"},
         {"CHMEX_2", "03cf2fdfff08e02b4cf82da448a2dcc8319d08e537a02ec6382ada9b905ed3dcb2"},
-        {"pubkey_3", "02b37b2e323c77ea3ed8e502aa56b1c572143204b8e45555e58ae1dff685d459a7"},
+        {"smk_3", "02b37b2e323c77ea3ed8e502aa56b1c572143204b8e45555e58ae1dff685d459a7"},
         {"pubkey_4", "03d32ac5339242c1dacda0bfd48b7e43e91eedff3173a668d41b3de1f4d3fbdb59"},
         {"pubkey_5", "0326d19a47602fdf5a6947e68a901090dfdaf8801875e5deba782f5772e024bbf6"},
         {"pubkey_6", "0211e94e272b6613bc486c1568cde9aa237a3f40aa965b104749551ad22926bf4a"},
