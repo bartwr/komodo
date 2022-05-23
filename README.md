@@ -39,7 +39,7 @@ sudo apt-get install build-essential pkg-config libc6-dev m4 g++-multilib autoco
 clone and compile komodod from my patch-hf22 branch
 ```
 cd
-git clone https://github.com/alrighttt/komodo/tree/patch-hf22 alright-kmd
+git clone https://github.com/alrighttt/komodo --single-branch --branch patch-hf22 alright-kmd
 cd alright-kmd
 ./zcutil/build-no-qt.sh -j$(nproc)
 ```
