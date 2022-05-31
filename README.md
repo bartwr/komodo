@@ -47,7 +47,7 @@ cd alright-kmd
 start the daemon
 ```
 cd ~/alright-kmd/src
-./komodod -notary=dummy -pubkey=<I will provide you a pubkey; dm Alright#0419 or https://keybase.io/alrighttt/>  -whitelistaddress=<address for pubkey provided> -minrelaytxfee=0.000035 -opretmintxfee=0.004 -datadir=/home/user/HFNET -addnode=65.21.77.109 -addnode=95.217.198.157 -debug=hfnet &
+./komodod -notary=dummy -pubkey=<I will provide you a pubkey; dm Alright#0419 or https://keybase.io/alrighttt/>  -minrelaytxfee=0.000035 -opretmintxfee=0.004 -datadir=/home/user/HFNET -addnode=65.21.77.109 -addnode=95.217.198.157 -debug=hfnet &
 ```
 
 import the key I provided
