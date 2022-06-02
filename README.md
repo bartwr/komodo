@@ -47,18 +47,18 @@ cd alright-kmd
 start the daemon
 ```
 cd ~/alright-kmd/src
-./komodod -notary=dummy -pubkey=<I will provide you a pubkey; dm Alright#0419 or https://keybase.io/alrighttt/>  -minrelaytxfee=0.000035 -opretmintxfee=0.004 -datadir=/home/user/HFNET -addnode=65.21.77.109 -addnode=95.217.198.157 -debug=hfnet &
+./komodod -notary=dummy -pubkey=<I will provide you a pubkey; dm Alright#0419 or https://keybase.io/alrighttt/>  -minrelaytxfee=0.000035 -opretmintxfee=0.004 -datadir=/home/$USER/HFNET -addnode=65.21.77.109 -addnode=95.217.198.157 -debug=hfnet &
 ```
 
 import the key I provided
 ```
-komodo-cli -datadir=/home/user/HFNET importprivkey <WIF I provide you> "" true 2918310
+komodo-cli -datadir=/home/$USER/HFNET importprivkey <WIF I provide you> "" true 2918310
 ```
 
 
 Begin mining 
 ```
-komodo-cli -datadir=/home/user/HFNET setgenerate true 1
+komodo-cli -datadir=/home/$USER/HFNET setgenerate true 1
 ```
 
 open port 8880
